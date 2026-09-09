@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  html, body, #root { height: 100%; }
+  body {
+    @apply font-body text-slate-100 antialiased;
+    background:
+      radial-gradient(60% 50% at 15% 10%, rgba(139,109,255,0.18) 0%, transparent 60%),
+      radial-gradient(50% 45% at 85% 15%, rgba(63,224,208,0.12) 0%, transparent 60%),
+      radial-gradient(60% 60% at 50% 100%, rgba(255,111,145,0.08) 0%, transparent 65%),
+      linear-gradient(180deg, #05060F 0%, #0A0D1F 55%, #0B0E22 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  /* Role Theme Background Overrides */
+  body.theme-hr {
+    background:
+      radial-gradient(60% 50% at 15% 10%, rgba(16,185,129,0.16) 0%, transparent 60%),
+      radial-gradient(50% 45% at 85% 15%, rgba(20,184,166,0.14) 0%, transparent 60%),
+      linear-gradient(180deg, #031210 0%, #061A18 55%, #07221F 100%);
+    background-attachment: fixed;
+  }
+
+  body.theme-admin {
+    background:
+      radial-gradient(60% 50% at 15% 10%, rgba(99,102,241,0.18) 0%, transparent 60%),
+      radial-gradient(50% 45% at 85% 15%, rgba(245,158,11,0.10) 0%, transparent 60%),
+      linear-gradient(180deg, #040918 0%, #08102B 55%, #0B1433 100%);
+    background-attachment: fixed;
+  }
+
+  /* Dark Theme Dropdown Select & Option Overrides */
+  select {
+    color-scheme: dark !important;
+    background-color: #0b1120 !important;
+    color: #f8fafc !important;
+  }
+
+  select option {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+    padding: 10px 14px;
+  }
+
+  select option:hover,
+  select option:focus,
+  select option:checked {
+    background-color: #1e293b !important;
+    color: #10b981 !important;
+  }
+
+  h1, h2, h3, h4 { @apply font-display; }
+  ::selection { background: rgba(139,109,255,0.35); }
+
+  /* Custom subtle scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  /* visible keyboard focus everywhere */
+  :focus-visible {
+    outline: 2px solid #8B6DFF;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-glass-fill backdrop-blur-xl border border-glass-border rounded-2xl shadow-glass
+           transition-all duration-200 hover:border-white/20;
+  }
+  .glass-panel-strong {
+    @apply bg-glass-fillStrong backdrop-blur-xl border border-glass-border rounded-2xl shadow-glass;
+  }
+
+  /* Role specific panels */
+  .glass-panel-hr {
+    @apply bg-hr-card backdrop-blur-xl border border-hr-border rounded-2xl shadow-glow-hr;
+  }
+  .glass-panel-admin {
+    @apply bg-admin-card backdrop-blur-xl border border-admin-border rounded-2xl shadow-glow-admin;
+  }
+
+  .glass-input {
+    @apply w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2.5
+           text-sm text-slate-100 placeholder:text-slate-500
+           focus:border-aurora-violet/60 focus:bg-white/[0.06] transition-colors outline-none;
+    color-scheme: dark !important;
+  }
+
+  .glass-input option {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+  }
+
+  .aurora-btn {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5
+           text-sm font-semibold text-white
+           bg-gradient-to-br from-aurora-violet to-indigo-600
+           shadow-[0_4px_20px_rgba(139,109,255,0.35)]
+           hover:shadow-[0_6px_28px_rgba(139,109,255,0.5)] hover:-translate-y-px
+           active:translate-y-0 transition-all duration-150 disabled:opacity-40 disabled:pointer-events-none;
+  }
+
+  .hr-btn {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5
+           text-sm font-semibold text-white
+           bg-gradient-to-br from-emerald-500 to-teal-600
+           shadow-hr-btn hover:shadow-[0_10px_32px_rgba(16,185,129,0.45)] hover:-translate-y-px
+           active:translate-y-0 transition-all duration-150 disabled:opacity-40 disabled:pointer-events-none;
+  }
+
+  .admin-btn {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5
+           text-sm font-semibold text-white
+           bg-gradient-to-br from-indigo-500 to-admin-sapphire
+           shadow-admin-btn hover:shadow-[0_10px_32px_rgba(99,102,241,0.45)] hover:-translate-y-px
+           active:translate-y-0 transition-all duration-150 disabled:opacity-40 disabled:pointer-events-none;
+  }
+
+  .ghost-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium
+           text-slate-200 bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:text-white transition-colors;
+  }
+
+  .role-badge-employee {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
+           bg-aurora-violet/10 text-aurora-violet border border-aurora-violet/30;
+  }
+  .role-badge-hr {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
+           bg-emerald-500/10 text-emerald-400 border border-emerald-500/30;
+  }
+  .role-badge-admin {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
+           bg-amber-500/10 text-amber-400 border border-amber-500/30;
+  }
+}
+
+

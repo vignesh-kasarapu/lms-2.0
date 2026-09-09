@@ -1,0 +1,172 @@
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { CheckCircle2, XCircle, Eye, Paperclip, Clock, UserPlus, X } from 'lucide-react';
+import { getRequestDetail, addWatcher, removeWatcher } from '../api/leaveRequests';
+import { attachmentDownloadUrl } from '../api/attachments';
+import { getWatchableEmployees } from '../api/employees';
+import { useAuth } from '../context/AuthContext';
+import GlassCard from '../components/common/GlassCard';
+import StatusBadge from '../components/common/StatusBadge';
+import { PrimaryButton } from '../components/common/GlassButton';
+import Topbar from '../components/layout/Topbar';
+
+export default function RequestDetail() {
+  const { requestId } = useParams();
+  const { hasRole } = useAuth();
+  const [request, setRequest] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [candidates, setCandidates] = useState([]);
+  const [picked, setPicked] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  const load = () => getRequestDetail(requestId).then((res) => setRequest(res.data)).finally(() => setLoading(false));
+  useEffect(() => { load(); }, [requestId]);
+  useEffect(() => {
+    if (hasRole('MANAGER', 'HR_ADMIN')) getWatchableEmployees().then((res) => setCandidates(res.data));
+  }, []);
+
+  const submitWatcher = async () => {
+    if (!picked) return;
+    setAdding(true);
+    try {
+      await addWatcher(requestId, picked);
+      setPicked('');
+      load();
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  if (loading) return <><Topbar title="Request detail" /><div className="h-64 glass-panel animate-pulse" /></>;
+  if (!request) return <><Topbar title="Request detail" /><GlassCard>Request not found.</GlassCard></>;
+
+  return (
+    <>
+      <Topbar title={`Request #${request.request_id}`} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 space-y-4">
+          <GlassCard>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-lg font-display font-bold text-slate-100">
+                  {request.start_date} → {request.end_date}
+                </p>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  {request.LeaveType?.type_name} · {request.deducted_days} day(s)
+                  {request.is_half_day && ` · ${request.half_day_portion?.toLowerCase()} half`}
+                </p>
+              </div>
+              <StatusBadge state={request.state} />
+            </div>
+
+            {(request.is_advance_leave || request.is_long_leave) && (
+              <div className="flex gap-2 mb-4">
+                {request.is_advance_leave && <Flag label="Advance leave" />}
+                {request.is_long_leave && <Flag label="Long leave — HR stage" />}
+              </div>
+            )}
+
+            <p className="text-xs font-medium text-slate-500 mb-1.5">Reason</p>
+            <p className="text-sm text-slate-300 bg-white/[0.03] rounded-xl px-4 py-3">{request.reason}</p>
+          </GlassCard>
+
+          <GlassCard>
+            <h3 className="font-display font-bold text-slate-100 mb-4 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-aurora-cyan" /> Approval timeline
+            </h3>
+            {!request.approvals?.length ? (
+              <p className="text-sm text-slate-500">No decisions recorded yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {request.approvals.map((a) => (
+                  <div key={a.approval_id} className="flex items-start gap-3">
+                    {a.decision === 'APPROVE' ? (
+                      <CheckCircle2 className="w-4 h-4 text-status-approved mt-0.5 shrink-0" />
+                    ) : (
+                      <XCircle className="w-4 h-4 text-status-rejected mt-0.5 shrink-0" />
+                    )}
+                    <div className="text-sm">
+                      <p className="text-slate-200">
+                        <span className="font-medium">{a.stage}</span> · {a.decision === 'APPROVE' ? 'Approved' : 'Rejected'}
+                        {a.on_behalf_of_id && ' (as delegate)'}
+                      </p>
+                      {a.reason && <p className="text-slate-500 text-xs mt-0.5">{a.reason}</p>}
+                      <p className="text-slate-600 text-xs mt-0.5">{new Date(a.decision_timestamp).toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </GlassCard>
+        </div>
+
+        <div className="space-y-4">
+          <GlassCard>
+            <h3 className="font-display font-bold text-slate-100 mb-3 flex items-center gap-2 text-sm">
+              <Eye className="w-4 h-4 text-aurora-violet" /> Watchers
+            </h3>
+            {!request.watchers?.length ? (
+              <p className="text-xs text-slate-500 mb-3">No watchers on this request.</p>
+            ) : (
+              <div className="space-y-2 mb-3">
+                {request.watchers.map((w) => (
+                  <div key={w.watcher_id} className="flex items-center justify-between text-sm text-slate-300 bg-white/[0.03] rounded-lg px-3 py-2">
+                    <span>{w.watcherEmployee?.full_name || `Employee #${w.watcher_employee_id}`}</span>
+                    {hasRole('MANAGER', 'HR_ADMIN') && (
+                      <button onClick={() => removeWatcher(requestId, w.watcher_id).then(load)} className="text-slate-500 hover:text-status-rejected transition-colors">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {hasRole('MANAGER', 'HR_ADMIN') && candidates.length > 0 && (
+              <div className="flex gap-2 pt-2 border-t border-white/5">
+                <select className="glass-input !py-2 text-xs" value={picked} onChange={(e) => setPicked(e.target.value)}>
+                  <option value="">Add a watcher…</option>
+                  {candidates
+                    .filter((c) => !request.watchers?.some((w) => w.watcher_employee_id === c.employee_id))
+                    .map((c) => <option key={c.employee_id} value={c.employee_id}>{c.full_name}</option>)}
+                </select>
+                <PrimaryButton onClick={submitWatcher} disabled={!picked || adding} className="!px-3 !py-2">
+                  <UserPlus className="w-3.5 h-3.5" />
+                </PrimaryButton>
+              </div>
+            )}
+          </GlassCard>
+
+          {request.LeaveType?.permits_attachments && (
+            <GlassCard>
+              <h3 className="font-display font-bold text-slate-100 mb-3 flex items-center gap-2 text-sm">
+                <Paperclip className="w-4 h-4 text-aurora-violet" /> Attachments
+              </h3>
+              {!request.attachments?.length ? (
+                <p className="text-xs text-slate-500">No attachments uploaded.</p>
+              ) : (
+                <div className="space-y-2">
+                  {request.attachments.map((a) => (
+                    <a key={a.attachment_id} href={attachmentDownloadUrl(a.attachment_id)} target="_blank" rel="noreferrer"
+                      className="flex items-center justify-between text-sm bg-white/[0.03] rounded-lg px-3 py-2 hover:bg-white/[0.06] transition-colors">
+                      <span className="text-slate-200 truncate">{a.file_name}</span>
+                      <span className="text-xs text-slate-500 shrink-0 ml-2">{(a.size_bytes / 1024).toFixed(0)} KB</span>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </GlassCard>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function Flag({ label }) {
+  return (
+    <span className="inline-flex items-center text-[11px] font-medium text-status-advance bg-status-advance/10 border border-status-advance/25 rounded-full px-2 py-0.5">
+      {label}
+    </span>
+  );
+}

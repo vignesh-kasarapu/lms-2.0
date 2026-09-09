@@ -1,0 +1,52 @@
+const blackoutService = require('../services/blackoutPeriod.service');
+const capacityService = require('../services/teamCapacity.service');
+const encashmentService = require('../services/encashment.service');
+const compOffService = require('../services/compOff.service');
+const calendarFeedService = require('../services/calendarFeed.service');
+const { ok, created } = require('../utils/apiResponse');
+
+// --- Blackout periods (LMS-085), HR/Admin ---
+const blackout = {
+  list: async (req, res) => ok(res, await blackoutService.listBlackoutPeriods()),
+  create: async (req, res) => created(res, await blackoutService.createBlackoutPeriod(req.body, req.currentUser.employeeId)),
+  deactivate: async (req, res) => ok(res, await blackoutService.deactivate(req.params.blackoutId, req.currentUser.employeeId)),
+};
+
+// --- Team capacity limits (LMS-086), HR/Admin ---
+const capacity = {
+  listForManager: async (req, res) => ok(res, await capacityService.listForManager(req.params.managerId)),
+  create: async (req, res) => created(res, await capacityService.createLimit(req.body, req.currentUser.employeeId)),
+};
+
+// --- Leave encashment (LMS-084), HR/Admin initiates, employee can view own ---
+const encashment = {
+  create: async (req, res) => created(res, await encashmentService.requestEncashment({ ...req.body, requestedBy: req.currentUser.employeeId })),
+  mine: async (req, res) => ok(res, await encashmentService.listForEmployee(req.currentUser.employeeId)),
+};
+
+// --- Compensatory off (LMS-083), Manager/HR credits, employee can view own ---
+const compOff = {
+  credit: async (req, res) => created(res, await compOffService.creditCompOff({ ...req.body, approvedBy: req.currentUser.employeeId })),
+  mine: async (req, res) => ok(res, await compOffService.listForEmployee(req.currentUser.employeeId)),
+};
+
+// --- Calendar feed (LMS-082) ---
+const calendarFeed = {
+  subscribe: async (req, res) => {
+    const token = await calendarFeedService.createSubscription(req.currentUser.employeeId, req.body.scope || 'OWN');
+    const env = require('../config/env');
+    return created(res, { token, url: `${env.appBaseUrl}/api/calendar-feed/${token}.ics` });
+  },
+  mine: async (req, res) => ok(res, await calendarFeedService.listSubscriptions(req.currentUser.employeeId)),
+  revoke: async (req, res) => ok(res, await calendarFeedService.revokeSubscription(req.params.subscriptionId, req.currentUser.employeeId)),
+  // Public (token-authenticated, not session-authenticated) — this is what Outlook actually polls.
+  serveIcs: async (req, res) => {
+    const token = req.params.token.replace(/\.ics$/, '');
+    const subscription = await calendarFeedService.resolveToken(token);
+    const ics = await calendarFeedService.buildIcsFeed(subscription);
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.send(ics);
+  },
+};
+
+module.exports = { blackout, capacity, encashment, compOff, calendarFeed };
