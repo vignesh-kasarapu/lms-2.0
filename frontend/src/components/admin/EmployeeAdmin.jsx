@@ -1,22 +1,28 @@
 import { useEffect, useState } from 'react';
 import { UserPlus, Upload, Search, Users, CheckCircle2, AlertCircle } from 'lucide-react';
 import { listEmployees, createEmployee, bulkImportEmployees } from '../../api/employees';
+import { listManagementLevels } from '../../api/admin';
 import GlassCard from '../common/GlassCard';
 import StandingWatcherControl from '../common/StandingWatcherControl';
 import EmployeeLifecycleActions from './EmployeeLifecycleActions';
 
-const empty = { fullName: '', workEmail: '', employeeCode: '', dateOfJoining: '', designation: '', departmentName: '', roleCode: 'EMPLOYEE', reportingManagerId: '' };
+const empty = { fullName: '', workEmail: '', employeeCode: '', dateOfJoining: '', designation: '', departmentName: '', roleCode: 'EMPLOYEE', managementLevelId: '', reportingManagerId: '' };
 
 export default function EmployeeAdmin() {
   const [employees, setEmployees] = useState([]);
+  const [managementLevels, setManagementLevels] = useState([]);
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [importResult, setImportResult] = useState(null);
   const [importing, setImporting] = useState(false);
   const [search, setSearch] = useState('');
+  const isManager = form.roleCode === 'MANAGER';
 
-  const load = () => listEmployees().then((res) => setEmployees(res.data));
+  const load = () => Promise.all([listEmployees(), listManagementLevels()]).then(([employeeRes, levelRes]) => {
+    setEmployees(employeeRes.data);
+    setManagementLevels(levelRes.data);
+  });
   useEffect(() => {
     load();
   }, []);
@@ -102,12 +108,28 @@ export default function EmployeeAdmin() {
           <div>
             <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Assigned Role</label>
             <select className="glass-input text-slate-200 bg-void-900" value={form.roleCode}
-              onChange={(e) => setForm((f) => ({ ...f, roleCode: e.target.value }))} required>
+              onChange={(e) => setForm((f) => ({
+                ...f,
+                roleCode: e.target.value,
+                managementLevelId: e.target.value === 'MANAGER' ? f.managementLevelId : '',
+              }))} required>
               <option value="EMPLOYEE">Employee</option>
               <option value="MANAGER">Manager</option>
               <option value="HR_ADMIN">HR Admin</option>
             </select>
           </div>
+          {isManager && <div>
+            <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Management Level</label>
+            <select className="glass-input text-slate-200 bg-void-900" value={form.managementLevelId}
+              onChange={(e) => setForm((f) => ({ ...f, managementLevelId: e.target.value }))} required>
+              <option value="">Select management level</option>
+              {managementLevels.map((level) => (
+                <option key={level.management_level_id} value={level.management_level_id}>
+                  {level.level_code} — {level.level_name}
+                </option>
+              ))}
+            </select>
+          </div>}
           <div>
             <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Reporting Manager</label>
             <select className="glass-input text-slate-200 bg-void-900" value={form.reportingManagerId}

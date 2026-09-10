@@ -6,6 +6,10 @@ const departments = {
   create: async (req, res) => created(res, await adminService.createDepartment(req.body, req.currentUser.employeeId)),
 };
 
+const managementLevels = {
+  list: async (req, res) => ok(res, await adminService.listManagementLevels()),
+};
+
 const grades = {
   list: async (req, res) => ok(res, await adminService.listGrades()),
   create: async (req, res) => created(res, await adminService.createGrade(req.body, req.currentUser.employeeId)),
@@ -36,7 +40,7 @@ const selfApproval = {
   revoke: async (req, res) => ok(res, await selfApprovalService.revoke(req.params.grantId, req.currentUser.employeeId)),
 };
 
-module.exports = { departments, grades, projects, leaveTypes, holidays, selfApproval };
+module.exports = { departments, managementLevels, grades, projects, leaveTypes, holidays, selfApproval };
 
 const workingPatternService = require('../services/workingPattern.service');
 const workingPatterns = {

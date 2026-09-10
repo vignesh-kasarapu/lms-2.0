@@ -46,6 +46,42 @@ async function listEmployees({ search, departmentId, gradeId } = {}) {
 
 /** LMS-010/012: create employee, then auto pro-rata entitlement is posted by a dedicated onboarding job. */
 async function onboardEmployee(payload, createdBy) {
+  const requiredFields = [
+    ['fullName', 'Full name'],
+    ['workEmail', 'Work email'],
+    ['employeeCode', 'Employee code'],
+    ['dateOfJoining', 'Date of joining'],
+    ['designation', 'Designation'],
+  ];
+  for (const [field, label] of requiredFields) {
+    if (!String(payload[field] || '').trim()) {
+      throw Object.assign(new Error(`${label} is required.`), { status: 400, code: 'VALIDATION_ERROR' });
+    }
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(payload.workEmail).trim())) {
+    throw Object.assign(new Error('Enter a valid work email address.'), { status: 400, code: 'VALIDATION_ERROR' });
+  }
+  if (!/^[-A-Za-z0-9_]+$/.test(String(payload.employeeCode).trim())) {
+    throw Object.assign(new Error('Employee code may contain only letters, numbers, hyphens, and underscores.'), { status: 400, code: 'VALIDATION_ERROR' });
+  }
+  if (Number.isNaN(Date.parse(payload.dateOfJoining))) {
+    throw Object.assign(new Error('Enter a valid date of joining.'), { status: 400, code: 'VALIDATION_ERROR' });
+  }
+
+  const roleCode = payload.roleCode || 'EMPLOYEE';
+  const allowedRoles = ['EMPLOYEE', 'MANAGER', 'HR_ADMIN'];
+  if (!allowedRoles.includes(roleCode)) {
+    throw Object.assign(new Error('Select a valid assigned role.'), { status: 400, code: 'VALIDATION_ERROR' });
+  }
+  if (roleCode === 'MANAGER' && !payload.managementLevelId) {
+    throw Object.assign(new Error('Management level is required for Managers.'), { status: 400, code: 'VALIDATION_ERROR' });
+  }
+
+  if (!payload.departmentId && !payload.departmentName?.trim()) {
+    throw Object.assign(new Error('Department is required.'), { status: 400, code: 'VALIDATION_ERROR' });
+  }
+
   if (payload.reportingManagerId) {
     const circular = await approvalRouting.wouldCreateCircularHierarchy(null, payload.reportingManagerId);
     if (circular) throw Object.assign(new Error('This reporting relationship would be circular.'), { status: 400, code: 'CIRCULAR_HIERARCHY' });
@@ -80,7 +116,7 @@ async function onboardEmployee(payload, createdBy) {
     reporting_manager_id: payload.reportingManagerId || null,
   });
 
-  await roleAssignmentService.assignRole(employee.employee_id, payload.roleCode || 'EMPLOYEE', createdBy);
+  await roleAssignmentService.assignRole(employee.employee_id, roleCode, createdBy);
 
   await auditService.record({
     actorId: createdBy, action: 'EMPLOYEE_CREATED', entityType: 'employees', entityId: employee.employee_id, newValue: payload,

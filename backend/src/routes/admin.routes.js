@@ -7,6 +7,7 @@ router.use(requireAuth, requireRole('HR_ADMIN')); // every admin route is HR/Adm
 
 router.get('/departments', controller.departments.list);
 router.post('/departments', controller.departments.create);
+router.get('/management-levels', controller.managementLevels.list);
 
 router.get('/grades', controller.grades.list);
 router.post('/grades', controller.grades.create);

@@ -2,6 +2,7 @@ import client from './client';
 
 export const listDepartments = () => client.get('/admin/departments');
 export const createDepartment = (payload) => client.post('/admin/departments', payload);
+export const listManagementLevels = () => client.get('/admin/management-levels');
 
 export const listGrades = () => client.get('/admin/grades');
 export const createGrade = (payload) => client.post('/admin/grades', payload);

@@ -1,11 +1,12 @@
 const {
-  Department, Grade, Project, ProjectAssignment, LeaveType, LeavePolicy, LeaveAccrualConfig,
+  Department, Grade, Project, ProjectAssignment, LeaveType, LeavePolicy, LeaveAccrualConfig, ManagementLevel,
   Holiday, LeaveYear, LeaveRequest,
 } = require('../models');
 const auditService = require('./audit.service');
 
 // ---- Departments / Grades / Projects: simple masters, no hardcoded values anywhere else ----
 async function listDepartments() { return Department.findAll({ order: [['department_name', 'ASC']] }); }
+async function listManagementLevels() { return ManagementLevel.findAll({ where: { is_active: true }, order: [['level_rank', 'ASC']] }); }
 async function createDepartment(payload, actorId) {
   const row = await Department.create({ department_code: payload.code, department_name: payload.name });
   await auditService.record({ actorId, action: 'DEPARTMENT_CREATED', entityType: 'departments', entityId: row.department_id, newValue: payload });
@@ -115,6 +116,6 @@ async function removeHoliday(holidayId, actorId) {
 }
 
 module.exports = {
-  listDepartments, createDepartment, listGrades, createGrade, listProjects, createProject, assignProject,
+  listDepartments, listManagementLevels, createDepartment, listGrades, createGrade, listProjects, createProject, assignProject,
   listLeaveTypes, createLeaveType, updateLeaveTypePolicy, listHolidays, addHoliday, removeHoliday,
 };
