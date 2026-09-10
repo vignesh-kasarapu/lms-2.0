@@ -6,7 +6,7 @@ import StandingWatcherControl from '../common/StandingWatcherControl';
 import EmployeeLifecycleActions from './EmployeeLifecycleActions';
 import RoleAssignment from './RoleAssignment';
 
-const empty = { fullName: '', workEmail: '', employeeCode: '', dateOfJoining: '', designation: '', reportingManagerId: '' };
+const empty = { fullName: '', workEmail: '', employeeCode: '', dateOfJoining: '', designation: '', departmentId: '', roleCode: 'EMPLOYEE', reportingManagerId: '' };
 
 export default function EmployeeAdmin() {
   const [employees, setEmployees] = useState([]);
@@ -18,7 +18,9 @@ export default function EmployeeAdmin() {
   const [search, setSearch] = useState('');
 
   const load = () => listEmployees().then((res) => setEmployees(res.data));
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -92,6 +94,20 @@ export default function EmployeeAdmin() {
             <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Date of Joining</label>
             <input type="date" className="glass-input" value={form.dateOfJoining}
               onChange={(e) => setForm((f) => ({ ...f, dateOfJoining: e.target.value }))} required />
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Department</label>
+            <input className="glass-input" placeholder="e.g. Engineering" value={form.departmentName}
+              onChange={(e) => setForm((f) => ({ ...f, departmentName: e.target.value }))} required />
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Assigned Role</label>
+            <select className="glass-input text-slate-200 bg-void-900" value={form.roleCode}
+              onChange={(e) => setForm((f) => ({ ...f, roleCode: e.target.value }))} required>
+              <option value="EMPLOYEE">Employee</option>
+              <option value="MANAGER">Manager</option>
+              <option value="HR_ADMIN">HR Admin</option>
+            </select>
           </div>
           <div>
             <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Reporting Manager</label>

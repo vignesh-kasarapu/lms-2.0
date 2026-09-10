@@ -1,8 +1,9 @@
 const { Op } = require('sequelize');
-const { Employee, LeaveType, LeaveYear, LeaveRequest } = require('../models');
+const { Employee, Department, LeaveType, LeaveYear, LeaveRequest } = require('../models');
 const balanceService = require('./balance.service');
 const approvalRouting = require('./approvalRouting.service');
 const auditService = require('./audit.service');
+const roleAssignmentService = require('./roleAssignment.service');
 
 /** LMS-036/dashboard: balance card per leave type — available, committed, effective, projected. */
 async function getDashboard(employeeId) {
@@ -44,18 +45,36 @@ async function onboardEmployee(payload, createdBy) {
     if (circular) throw Object.assign(new Error('This reporting relationship would be circular.'), { status: 400, code: 'CIRCULAR_HIERARCHY' });
   }
 
+  let departmentId = payload.departmentId || null;
+  if (payload.departmentName?.trim()) {
+    let department = await Department.findOne({ where: { department_name: payload.departmentName.trim() } });
+    if (!department) {
+      const baseCode = payload.departmentName.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').slice(0, 24) || 'DEPARTMENT';
+      let departmentCode = baseCode;
+      let suffix = 1;
+      while (await Department.findOne({ where: { department_code: departmentCode } })) {
+        departmentCode = `${baseCode.slice(0, 24 - String(suffix).length - 1)}_${suffix}`;
+        suffix += 1;
+      }
+      department = await Department.create({ department_code: departmentCode, department_name: payload.departmentName.trim() });
+    }
+    departmentId = department.department_id;
+  }
+
   const employee = await Employee.create({
     entra_oid: payload.entraOid || null,
     work_email: payload.workEmail,
     employee_code: payload.employeeCode,
     full_name: payload.fullName,
     date_of_joining: payload.dateOfJoining,
-    department_id: payload.departmentId,
+    department_id: departmentId,
     grade_id: payload.gradeId,
     management_level_id: payload.managementLevelId,
     designation: payload.designation,
     reporting_manager_id: payload.reportingManagerId || null,
   });
+
+  await roleAssignmentService.assignRole(employee.employee_id, payload.roleCode || 'EMPLOYEE', createdBy);
 
   await auditService.record({
     actorId: createdBy, action: 'EMPLOYEE_CREATED', entityType: 'employees', entityId: employee.employee_id, newValue: payload,
