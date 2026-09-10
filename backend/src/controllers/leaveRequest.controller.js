@@ -128,7 +128,7 @@ async function detail(req, res) {
 }
 
 async function approvalsQueue(req, res) {
-  const { LeaveRequest, LeaveType, Employee } = require('../models');
+  const { LeaveRequest, LeaveType, Employee, Delegation } = require('../models');
   const { Op } = require('sequelize');
   const requests = await LeaveRequest.findAll({
     where: {
@@ -137,11 +137,35 @@ async function approvalsQueue(req, res) {
     },
     include: [
       { model: LeaveType, attributes: ['type_name'] },
-      { model: Employee, as: 'employee', attributes: ['full_name', 'employee_code'] },
+      { model: Employee, as: 'employee', attributes: ['full_name', 'employee_code', 'reporting_manager_id'] },
     ],
     order: [['sla_started_at', 'ASC']],
   });
-  return ok(res, requests);
+
+  // A delegated request is identified from the delegation that was active
+  // when the request was submitted. This remains true even if the delegation
+  // is revoked later, because the request was already routed to this user.
+  const delegations = await Delegation.findAll({
+    where: { delegate_id: req.currentUser.employeeId },
+    include: [{ model: Employee, as: 'nominator', attributes: ['full_name', 'employee_code'] }],
+  });
+
+  const result = requests.map((request) => {
+    const submittedAt = new Date(request.application_timestamp || request.createdAt);
+    const delegation = delegations.find((candidate) => (
+      String(candidate.nominator_id) === String(request.employee?.reporting_manager_id)
+      && new Date(candidate.from_date) <= submittedAt
+      && new Date(candidate.to_date) >= submittedAt
+    ));
+
+    return {
+      ...request.toJSON(),
+      is_delegated: Boolean(delegation),
+      delegated_for: delegation?.nominator || null,
+    };
+  });
+
+  return ok(res, result);
 }
 
 async function addWatcher(req, res) {

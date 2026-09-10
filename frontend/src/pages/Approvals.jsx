@@ -11,7 +11,7 @@ export default function Approvals() {
   const [loading, setLoading] = useState(true);
   const [rejecting, setRejecting] = useState(null);
   const [reason, setReason] = useState('');
-  const [filter, setFilter] = useState('ALL'); // 'ALL' | 'ADVANCE' | 'LONG_LEAVE'
+  const [filter, setFilter] = useState('ALL'); // 'ALL' | 'DELEGATED' | 'DIRECT' | 'ADVANCE' | 'LONG_LEAVE'
 
   const load = () => getApprovalsQueue().then((res) => setRequests(res.data)).finally(() => setLoading(false));
   useEffect(() => {
@@ -26,8 +26,12 @@ export default function Approvals() {
 
   const advanceCount = requests.filter((r) => r.is_advance_leave).length;
   const longLeaveCount = requests.filter((r) => r.is_long_leave).length;
+  const delegatedCount = requests.filter((r) => r.is_delegated).length;
+  const directCount = requests.length - delegatedCount;
 
   const filteredRequests = requests.filter((r) => {
+    if (filter === 'DELEGATED') return r.is_delegated;
+    if (filter === 'DIRECT') return !r.is_delegated;
     if (filter === 'ADVANCE') return r.is_advance_leave;
     if (filter === 'LONG_LEAVE') return r.is_long_leave;
     return true;
@@ -68,6 +72,30 @@ export default function Approvals() {
           >
             All Pending ({requests.length})
           </button>
+          {delegatedCount > 0 && (
+            <button
+              onClick={() => setFilter('DELEGATED')}
+              className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                filter === 'DELEGATED'
+                  ? 'bg-violet-500 text-white font-extrabold shadow-lg shadow-violet-500/30 border border-violet-400/50'
+                  : 'text-violet-300 hover:bg-violet-500/10'
+              }`}
+            >
+              <User className="w-3.5 h-3.5" /> Delegated to me ({delegatedCount})
+            </button>
+          )}
+          {directCount > 0 && delegatedCount > 0 && (
+            <button
+              onClick={() => setFilter('DIRECT')}
+              className={`px-3.5 py-1.5 rounded-xl transition-all ${
+                filter === 'DIRECT'
+                  ? 'bg-slate-200 text-slate-950 font-extrabold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              My team ({directCount})
+            </button>
+          )}
           {advanceCount > 0 && (
             <button
               onClick={() => setFilter('ADVANCE')}
@@ -116,6 +144,11 @@ export default function Approvals() {
                       <span className="text-xs px-2.5 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
                         {r.employee?.designation || 'Staff'}
                       </span>
+                      {r.is_delegated && (
+                        <span className="text-xs px-2.5 py-0.5 rounded-lg bg-violet-500/15 text-violet-300 border border-violet-400/30 font-semibold">
+                          Delegated for {r.delegated_for?.full_name || 'manager'}
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-3 text-xs text-slate-300 mt-2 flex-wrap">

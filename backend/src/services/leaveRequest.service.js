@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 const {
-  sequelize, LeaveRequest, Employee, LeaveType, LeaveYear, Watcher, ProjectAssignment,
+  sequelize, LeaveRequest, Employee, LeaveType, LeaveYear, Watcher, ProjectAssignment, Delegation,
 } = require('../models');
 const businessDayService = require('./businessDay.service');
 const balanceService = require('./balance.service');
@@ -279,8 +279,30 @@ async function decide({ requestId, actorId, decision, reason }) {
 
     const stage = request.state === 'PENDING_MANAGER' ? 'MANAGER' : 'HR';
 
+    // Preserve the delegation context in the audit/approval row. The request
+    // may still be pending after the delegation is revoked, so match against
+    // the delegation active when the request was originally submitted.
+    let onBehalfOfId = null;
+    if (stage === 'MANAGER') {
+      const requestEmployee = await Employee.findByPk(request.employee_id, { transaction });
+      const submittedAt = new Date(request.application_timestamp || request.createdAt);
+      const delegation = requestEmployee?.reporting_manager_id
+        ? await Delegation.findOne({
+          where: {
+            nominator_id: requestEmployee.reporting_manager_id,
+            delegate_id: actorId,
+            from_date: { [Op.lte]: submittedAt },
+            to_date: { [Op.gte]: submittedAt },
+          },
+          order: [['delegation_id', 'DESC']],
+          transaction,
+        })
+        : null;
+      onBehalfOfId = delegation?.nominator_id || null;
+    }
+
     if (decision === 'APPROVE') {
-      await approveStageInternal({ request, stage, actorId, onBehalfOfId: null, transaction });
+      await approveStageInternal({ request, stage, actorId, onBehalfOfId, transaction });
       // Only notify watchers on a truly final APPROVED — a Manager approval that
       // moves to PENDING_HR isn't a decision yet, just a stage transition.
       if (request.state === 'APPROVED') {
@@ -301,7 +323,8 @@ async function decide({ requestId, actorId, decision, reason }) {
 
       const { LeaveRequestApproval } = require('../models');
       await LeaveRequestApproval.create({
-        request_id: request.request_id, stage, actor_id: actorId, decision: 'REJECT', reason, decision_timestamp: new Date(),
+        request_id: request.request_id, stage, actor_id: actorId, on_behalf_of_id: onBehalfOfId,
+        decision: 'REJECT', reason, decision_timestamp: new Date(),
       }, { transaction });
       await watcherService.notifyWatchers(request.request_id, 'WATCHED_REQUEST_REJECTED', transaction);
     }
