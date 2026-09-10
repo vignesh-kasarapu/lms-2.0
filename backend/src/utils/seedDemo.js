@@ -103,6 +103,7 @@ async function seedDemo() {
     departmentId: engineering.department_id,
     managerId: manager.employee_id,
   });
+  await ensureRole(priya.employee_id, 'EMPLOYEE');
 
   const rohan = await ensureEmployee({
     code: 'EMP004',
@@ -113,6 +114,7 @@ async function seedDemo() {
     departmentId: engineering.department_id,
     managerId: manager.employee_id,
   });
+  await ensureRole(rohan.employee_id, 'EMPLOYEE');
 
   // --- Sample leave requests, submitted through the real service so accrual,
   //     balance, and approval-routing logic all actually run. -------------

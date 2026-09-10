@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { Employee, Department, LeaveType, LeaveYear, LeaveRequest } = require('../models');
+const { Employee, Department, LeaveType, LeaveYear, LeaveRequest, Role } = require('../models');
 const balanceService = require('./balance.service');
 const approvalRouting = require('./approvalRouting.service');
 const auditService = require('./audit.service');
@@ -35,7 +35,13 @@ async function listEmployees({ search, departmentId, gradeId } = {}) {
   if (search) where.full_name = { [Op.like]: `%${search}%` }; // MySQL's default collation is case-insensitive already
   if (departmentId) where.department_id = departmentId;
   if (gradeId) where.grade_id = gradeId;
-  return Employee.findAll({ where, order: [['full_name', 'ASC']] });
+  // full_name is a Sequelize virtual field (first_name + last_name), so it
+  // cannot be used in MySQL's ORDER BY clause. Sort by the real columns.
+  return Employee.findAll({
+    where,
+    include: [{ model: Role, attributes: ['role_code', 'role_name'], through: { attributes: [] } }],
+    order: [['first_name', 'ASC'], ['last_name', 'ASC']],
+  });
 }
 
 /** LMS-010/012: create employee, then auto pro-rata entitlement is posted by a dedicated onboarding job. */

@@ -4,9 +4,8 @@ import { listEmployees, createEmployee, bulkImportEmployees } from '../../api/em
 import GlassCard from '../common/GlassCard';
 import StandingWatcherControl from '../common/StandingWatcherControl';
 import EmployeeLifecycleActions from './EmployeeLifecycleActions';
-import RoleAssignment from './RoleAssignment';
 
-const empty = { fullName: '', workEmail: '', employeeCode: '', dateOfJoining: '', designation: '', departmentId: '', roleCode: 'EMPLOYEE', reportingManagerId: '' };
+const empty = { fullName: '', workEmail: '', employeeCode: '', dateOfJoining: '', designation: '', departmentName: '', roleCode: 'EMPLOYEE', reportingManagerId: '' };
 
 export default function EmployeeAdmin() {
   const [employees, setEmployees] = useState([]);
@@ -173,7 +172,7 @@ export default function EmployeeAdmin() {
           </div>
         </div>
 
-        <div className="divide-y divide-white/5 max-h-[560px] overflow-y-auto pr-1">
+        <div className="divide-y divide-white/5 pr-1">
           {!filtered.length ? (
             <p className="text-xs text-slate-500 py-8 text-center">No employees matching search criteria.</p>
           ) : (
@@ -187,6 +186,13 @@ export default function EmployeeAdmin() {
                     <div>
                       <p className="text-sm font-bold text-slate-100">{emp.full_name}</p>
                       <p className="text-xs text-slate-400">{emp.designation} · <span className="font-mono text-slate-300">{emp.employee_code}</span></p>
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {(emp.Roles || []).map((role) => (
+                          <span key={role.role_code} className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full text-indigo-300 bg-indigo-500/10 border border-indigo-500/30">
+                            {role.role_name || role.role_code}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
@@ -203,7 +209,6 @@ export default function EmployeeAdmin() {
                 <div className="bg-white/[0.02] p-2.5 rounded-xl border border-white/5 space-y-2">
                   <StandingWatcherControl employeeId={emp.employee_id} employeeName={emp.full_name} />
                   <EmployeeLifecycleActions employee={emp} allEmployees={employees} onChange={load} />
-                  <RoleAssignment employeeId={emp.employee_id} />
                 </div>
               </div>
             ))
