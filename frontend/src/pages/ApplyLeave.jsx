@@ -3,19 +3,29 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, CalendarDays, Paperclip, Sparkles, CheckCircle2, FileText, ArrowRight } from 'lucide-react';
 import { previewApplication, submitRequest, saveDraft } from '../api/leaveRequests';
+import { getDashboard } from '../api/employees';
 import { uploadAttachment } from '../api/attachments';
 import GlassCard from '../components/common/GlassCard';
 import { PrimaryButton, GhostButton } from '../components/common/GlassButton';
 import Topbar from '../components/layout/Topbar';
 
-const LEAVE_TYPES = [
+const FALLBACK_LEAVE_TYPES = [
   { id: 1, name: 'Annual Leave', icon: '🏖️', halfDay: true, attachments: false, desc: 'Paid vacation time' },
   { id: 2, name: 'Sick Leave', icon: '🩺', halfDay: true, attachments: true, desc: 'Medical recovery & doctor visits' },
   { id: 3, name: 'Casual Leave', icon: '⚡', halfDay: true, attachments: false, desc: 'Personal urgent matters' },
 ];
 
+const LEAVE_TYPE_META = {
+  ANNUAL: { icon: '🌴', desc: 'Paid vacation time' },
+  SICK: { icon: '🩺', desc: 'Medical recovery & doctor visits' },
+  CASUAL: { icon: '⚡', desc: 'Personal urgent matters' },
+  MATERNITY: { icon: '🌸', desc: 'Time for childbirth and recovery' },
+  BEREAVEMENT: { icon: '🕊️', desc: 'Time to grieve and support family' },
+};
+
 export default function ApplyLeave() {
   const navigate = useNavigate();
+  const [leaveTypes, setLeaveTypes] = useState(FALLBACK_LEAVE_TYPES);
   const [form, setForm] = useState({ leaveTypeId: '', startDate: '', endDate: '', isHalfDay: false, halfDayPortion: 'FIRST', reason: '' });
   const [preview, setPreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -23,7 +33,21 @@ export default function ApplyLeave() {
   const [error, setError] = useState(null);
   const [file, setFile] = useState(null);
 
-  const selectedType = LEAVE_TYPES.find((t) => String(t.id) === String(form.leaveTypeId));
+  const selectedType = leaveTypes.find((t) => String(t.id) === String(form.leaveTypeId));
+
+  useEffect(() => {
+    getDashboard().then((res) => {
+      const dynamicTypes = (res.data.balances || []).map(({ leaveType }) => ({
+        id: leaveType.leave_type_id,
+        name: leaveType.type_name,
+        icon: LEAVE_TYPE_META[leaveType.type_code]?.icon || '📝',
+        halfDay: leaveType.permits_half_day,
+        attachments: leaveType.permits_attachments,
+        desc: LEAVE_TYPE_META[leaveType.type_code]?.desc || 'Organisation leave entitlement',
+      }));
+      if (dynamicTypes.length) setLeaveTypes(dynamicTypes);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!form.leaveTypeId || !form.startDate || !form.endDate) { setPreview(null); return; }
@@ -79,8 +103,8 @@ export default function ApplyLeave() {
               <label className="text-xs font-bold uppercase tracking-wider text-aurora-cyan mb-2.5 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" /> 1. Select Leave Category
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {LEAVE_TYPES.map((t) => {
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                {leaveTypes.map((t) => {
                   const isSelected = String(form.leaveTypeId) === String(t.id);
                   return (
                     <button

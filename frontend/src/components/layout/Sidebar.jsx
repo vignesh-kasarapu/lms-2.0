@@ -1,6 +1,7 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import {
-  LayoutDashboard, PlaneTakeoff, ListChecks, CalendarDays, Users, Settings, ShieldCheck, UserCog, PartyPopper, Sparkles, Building2
+  LayoutDashboard, PlaneTakeoff, ListChecks, CalendarDays, Users, Settings, ShieldCheck, UserCog, PartyPopper, Sparkles, Building2, ChevronDown
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -22,8 +23,33 @@ const NAV_ADMIN = [
   { to: '/administration', label: 'Administration', icon: Settings, roles: ['HR_ADMIN'] },
 ];
 
+const ADMIN_SECTIONS = [
+  ['employees', 'Employees'],
+  ['leave-types', 'Leave types & policy'],
+  ['holidays', 'Holiday calendar'],
+  ['org-config', 'Organisation'],
+  ['self-approval', 'Self-approval'],
+  ['working-patterns', 'Working patterns'],
+  ['templates', 'Notification templates'],
+  ['capacity', 'Blackout & capacity'],
+  ['balance-extras', 'Encashment & comp-off'],
+  ['delegations', 'Delegations'],
+  ['balance-adjustment', 'Balance adjustment'],
+  ['reports', 'Reports'],
+  ['audit', 'Audit log'],
+];
+
 export default function Sidebar() {
   const { hasRole } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isAdministration = location.pathname === '/administration';
+  const activeAdminSection = new URLSearchParams(location.search).get('section') || 'employees';
+  const [adminOpen, setAdminOpen] = useState(isAdministration);
+
+  useEffect(() => {
+    if (isAdministration) setAdminOpen(true);
+  }, [isAdministration]);
 
   const employeeItems = NAV_EMPLOYEE.filter((item) => hasRole(...item.roles));
   const managementItems = NAV_MANAGEMENT.filter((item) => hasRole(...item.roles));
@@ -102,25 +128,49 @@ export default function Sidebar() {
           {/* Admin Section */}
           {adminItems.length > 0 && (
             <div>
-              <p className="px-3 text-xs font-black uppercase tracking-wider text-amber-400 mb-2.5 flex items-center gap-1.5">
-                <Settings className="w-3.5 h-3.5 text-amber-400" /> System Admin
-              </p>
               <div className="space-y-1">
                 {adminItems.map(({ to, label, icon: Icon }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-base font-semibold transition-all ${
-                        isActive
+                  <div key={to}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdminOpen((open) => !open);
+                        if (!isAdministration) navigate(to);
+                      }}
+                      aria-expanded={adminOpen}
+                      aria-controls="administration-submenu"
+                      className={`w-full flex items-center justify-between gap-3.5 px-3.5 py-3 rounded-xl text-base font-semibold transition-all ${
+                        isAdministration
                           ? 'bg-gradient-to-r from-indigo-500/25 to-amber-500/15 text-white border border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.2)] font-bold'
                           : 'text-slate-300 hover:text-white hover:bg-white/[0.06]'
-                      }`
-                    }
-                  >
-                    <Icon className="w-5 h-5 text-amber-400" strokeWidth={2} />
-                    {label}
-                  </NavLink>
+                      }`}
+                    >
+                      <span className="flex items-center gap-3.5">
+                        <Icon className="w-5 h-5 text-amber-400" strokeWidth={2} />
+                        {label}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-amber-300 transition-transform ${adminOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {adminOpen && (
+                      <div id="administration-submenu" className="mt-1 ml-4 space-y-0.5 border-l border-amber-400/25 pl-3">
+                        {ADMIN_SECTIONS.map(([key, sectionLabel]) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => navigate(`${to}?section=${key}`)}
+                            className={`w-full rounded-xl px-3.5 py-3 text-left text-base font-semibold transition-all ${
+                              isAdministration && activeAdminSection === key
+                                ? 'bg-white/[0.08] text-white font-bold'
+                                : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'
+                            }`}
+                          >
+                            {sectionLabel}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
-export default function Tabs({ tabs }) {
-  const [active, setActive] = useState(tabs[0].key);
+export default function Tabs({ tabs, initialActiveKey }) {
+  const [active, setActive] = useState(initialActiveKey || tabs[0].key);
   const ActiveContent = tabs.find((t) => t.key === active)?.content;
 
   return (

@@ -26,6 +26,8 @@ async function seed() {
     { type_code: 'ANNUAL', type_name: 'Annual Leave', permits_half_day: true, permits_attachments: false, entitlement: 24, carries_forward: true, cap: 10, accrual: 'MONTHLY' },
     { type_code: 'SICK', type_name: 'Sick Leave', is_sick_leave: true, permits_half_day: true, permits_attachments: true, entitlement: 9, carries_forward: false, accrual: 'MONTHLY' },
     { type_code: 'CASUAL', type_name: 'Casual Leave', permits_half_day: true, permits_attachments: false, entitlement: 15, carries_forward: false, accrual: 'QUARTERLY' },
+    { type_code: 'MATERNITY', type_name: 'Maternity Leave', permits_half_day: false, permits_attachments: true, entitlement: 182, carries_forward: false, accrual: 'ANNUAL' },
+    { type_code: 'BEREAVEMENT', type_name: 'Bereavement Leave', permits_half_day: false, permits_attachments: false, entitlement: 5, carries_forward: false, accrual: 'ANNUAL' },
   ];
   for (const t of types) {
     const [leaveType] = await LeaveType.findOrCreate({
