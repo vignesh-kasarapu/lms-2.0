@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { UserCog, Info, Mail, ShieldCheck, Sparkles, UserCheck } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { getEligibleDelegates, getMyDelegations, createDelegation, revokeDelegation } from '../api/delegations';
+import DelegationAdmin from '../components/admin/DelegationAdmin';
 import { getMyDigestPreference, setMyDigestPreference } from '../api/employees';
 import GlassCard from '../components/common/GlassCard';
 import { GhostButton } from '../components/common/GlassButton';
@@ -8,6 +10,8 @@ import Topbar from '../components/layout/Topbar';
 import EmptyState from '../components/common/EmptyState';
 
 export default function Delegation() {
+  const { hasRole } = useAuth();
+  const isHrAdmin = hasRole('HR_ADMIN');
   const [eligible, setEligible] = useState({ candidates: [], fallbackUsed: false });
   const [mine, setMine] = useState([]);
   const [form, setForm] = useState({ delegateId: '', fromDate: '', toDate: '' });
@@ -24,9 +28,18 @@ export default function Delegation() {
   useEffect(() => {
     // Apply light emerald green theme to body
     document.body.classList.add('theme-hr');
-    load();
+    if (!isHrAdmin) load();
     return () => document.body.classList.remove('theme-hr');
-  }, []);
+  }, [isHrAdmin]);
+
+  if (isHrAdmin) {
+    return (
+      <>
+        <Topbar title="Delegation Management" />
+        <DelegationAdmin />
+      </>
+    );
+  }
 
   const toggleDigest = async () => {
     setDigestSaving(true);

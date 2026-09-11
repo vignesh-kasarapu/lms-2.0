@@ -37,9 +37,45 @@ async function getEligibleDelegates(nominatorId) {
   return { candidates: [], fallbackUsed: true };
 }
 
+/** HR/Admin picker: only same-supervisor, same-level Managers are eligible.
+ * Unlike the manager self-service flow, HR must not receive the supervisor
+ * fallback as a delegate option.
+ */
+async function getEligiblePeerManagers(nominatorId) {
+  const nominator = await Employee.findByPk(nominatorId);
+  if (!nominator) throw Object.assign(new Error('Manager not found'), { status: 404 });
+  if (!nominator.management_level_id) return [];
+
+  const peers = await Employee.findAll({
+    where: {
+      reporting_manager_id: nominator.reporting_manager_id,
+      management_level_id: nominator.management_level_id,
+      employee_id: { [Op.ne]: nominatorId },
+    },
+    order: [['first_name', 'ASC'], ['last_name', 'ASC']],
+  });
+
+  const candidates = [];
+  for (const peer of peers) {
+    if (await approvalRouting.hasRole(peer.employee_id, 'MANAGER')) candidates.push(peer);
+  }
+  return candidates;
+}
+
+async function listManagers() {
+  const employees = await Employee.findAll({ order: [['first_name', 'ASC'], ['last_name', 'ASC']] });
+  const managers = [];
+  for (const employee of employees) {
+    if (await approvalRouting.hasRole(employee.employee_id, 'MANAGER')) managers.push(employee);
+  }
+  return managers;
+}
+
 /** LMS-041: a Manager nominates a Delegate for a defined date range, from the eligible list only. */
-async function nominate({ nominatorId, delegateId, fromDate, toDate, setById }) {
-  const { candidates } = await getEligibleDelegates(nominatorId);
+async function nominate({ nominatorId, delegateId, fromDate, toDate, setById, allowFallback = true }) {
+  const candidates = allowFallback
+    ? (await getEligibleDelegates(nominatorId)).candidates
+    : await getEligiblePeerManagers(nominatorId);
   const isEligible = candidates.some((c) => String(c.employee_id) === String(delegateId));
   if (!isEligible) {
     throw Object.assign(
@@ -61,12 +97,13 @@ async function nominate({ nominatorId, delegateId, fromDate, toDate, setById }) 
 }
 
 /** LMS-042: a Manager's own supervisor may set a delegate on that Manager's behalf, for emergency cover. */
-async function nominateOnBehalf({ supervisorId, nominatorId, delegateId, fromDate, toDate }) {
+async function nominateOnBehalf({ supervisorId, nominatorId, delegateId, fromDate, toDate, isHrAdmin = false }) {
   const nominator = await Employee.findByPk(nominatorId);
-  if (String(nominator.reporting_manager_id) !== String(supervisorId)) {
+  if (!nominator) throw Object.assign(new Error('Manager not found'), { status: 404 });
+  if (!isHrAdmin && String(nominator.reporting_manager_id) !== String(supervisorId)) {
     throw Object.assign(new Error('You may only set a delegation for your own direct reports.'), { status: 403, code: 'NOT_SUPERVISOR' });
   }
-  return nominate({ nominatorId, delegateId, fromDate, toDate, setById: supervisorId });
+  return nominate({ nominatorId, delegateId, fromDate, toDate, setById: supervisorId, allowFallback: !isHrAdmin });
 }
 
 async function revoke(delegationId, actorId) {
@@ -94,4 +131,4 @@ async function listAll() {
   });
 }
 
-module.exports = { getEligibleDelegates, nominate, nominateOnBehalf, revoke, listMine, listAll };
+module.exports = { getEligibleDelegates, getEligiblePeerManagers, listManagers, nominate, nominateOnBehalf, revoke, listMine, listAll };

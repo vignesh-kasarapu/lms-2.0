@@ -16,7 +16,7 @@ const NAV_EMPLOYEE = [
 const NAV_MANAGEMENT = [
   { to: '/approvals', label: 'Approvals Queue', icon: ShieldCheck, roles: ['MANAGER', 'HR_ADMIN'] },
   { to: '/my-team', label: 'My Team', icon: Users, roles: ['MANAGER', 'HR_ADMIN'] },
-  { to: '/delegation', label: 'Delegations', icon: UserCog, roles: ['MANAGER'] },
+  { to: '/delegation', label: 'Delegations', icon: UserCog, roles: ['MANAGER', 'HR_ADMIN'] },
 ];
 
 const NAV_ADMIN = [
@@ -33,7 +33,6 @@ const ADMIN_SECTIONS = [
   ['templates', 'Notification templates'],
   ['capacity', 'Blackout & capacity'],
   ['balance-extras', 'Encashment & comp-off'],
-  ['delegations', 'Delegations'],
   ['balance-adjustment', 'Balance adjustment'],
   ['reports', 'Reports'],
   ['audit', 'Audit log'],

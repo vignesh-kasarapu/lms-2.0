@@ -6,6 +6,14 @@ async function eligibleDelegates(req, res) {
   return ok(res, result);
 }
 
+async function managers(req, res) {
+  return ok(res, await delegationService.listManagers());
+}
+
+async function eligibleForManager(req, res) {
+  return ok(res, await delegationService.getEligiblePeerManagers(req.params.nominatorId));
+}
+
 async function create(req, res) {
   const { delegateId, fromDate, toDate } = req.body;
   const delegation = await delegationService.nominate({
@@ -18,6 +26,7 @@ async function createOnBehalf(req, res) {
   const { nominatorId, delegateId, fromDate, toDate } = req.body;
   const delegation = await delegationService.nominateOnBehalf({
     supervisorId: req.currentUser.employeeId, nominatorId, delegateId, fromDate, toDate,
+    isHrAdmin: req.currentUser.roles.includes('HR_ADMIN'),
   });
   return created(res, delegation);
 }
@@ -37,4 +46,4 @@ async function listAll(req, res) {
   return ok(res, delegations);
 }
 
-module.exports = { eligibleDelegates, create, createOnBehalf, revoke, mine, listAll };
+module.exports = { eligibleDelegates, managers, eligibleForManager, create, createOnBehalf, revoke, mine, listAll };

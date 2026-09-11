@@ -11,7 +11,6 @@ import WorkingPatternAdmin from '../components/admin/WorkingPatternAdmin';
 import NotificationTemplateAdmin from '../components/admin/NotificationTemplateAdmin';
 import CapacityAdmin from '../components/admin/CapacityAdmin';
 import BalanceExtrasAdmin from '../components/admin/BalanceExtrasAdmin';
-import DelegationAdmin from '../components/admin/DelegationAdmin';
 import BalanceAdjustmentAdmin from '../components/admin/BalanceAdjustmentAdmin';
 import { getDashboard } from '../api/employees';
 
@@ -36,7 +35,6 @@ export default function Administration() {
     templates: { label: 'Notification templates', content: <NotificationTemplateAdmin /> },
     capacity: { label: 'Blackout & capacity', content: <CapacityAdmin /> },
     'balance-extras': { label: 'Encashment & comp-off', content: <BalanceExtrasAdmin /> },
-    delegations: { label: 'Delegations', content: <DelegationAdmin /> },
     'balance-adjustment': { label: 'Balance adjustment', content: <BalanceAdjustmentAdmin /> },
     reports: { label: 'Reports', content: <ReportsAdmin /> },
     audit: { label: 'Audit log', content: <AuditLogAdmin /> },
