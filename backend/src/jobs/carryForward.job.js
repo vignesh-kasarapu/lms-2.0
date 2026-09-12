@@ -35,7 +35,7 @@ async function runYearEndCarryForward(closingLeaveYearId) {
     if (!nextYear) throw new Error('No next leave year exists to carry forward into. Create it before running this job.');
 
     const policies = await LeavePolicy.findAll({ where: { carries_forward: true }, include: [LeaveType] });
-    const employees = await Employee.findAll({ where: { status: 'ACTIVE' } });
+    const employees = await Employee.findAll({ where: { is_active: true } });
 
     for (const policy of policies) {
       for (const emp of employees) {

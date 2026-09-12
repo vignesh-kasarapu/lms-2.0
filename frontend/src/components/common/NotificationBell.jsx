@@ -48,7 +48,13 @@ export default function NotificationBell() {
 
   const inspectNotification = async (n, e) => {
     if (e) e.stopPropagation();
-    if (!n.read_at) await markNotificationRead(n.notification_id);
+    if (!n.read_at) {
+      try {
+        await markNotificationRead(n.notification_id);
+      } catch {
+        // Non-critical — still open the notification even if marking it read failed.
+      }
+    }
     setSelectedNotification(n);
     load();
   };
@@ -65,7 +71,11 @@ export default function NotificationBell() {
 
   const markAll = async (e) => {
     e.stopPropagation();
-    await markAllNotificationsRead();
+    try {
+      await markAllNotificationsRead();
+    } catch {
+      // Non-critical — the periodic poll will pick the real state back up regardless.
+    }
     load();
   };
 
@@ -78,12 +88,12 @@ export default function NotificationBell() {
       <button
         onClick={toggleOpen}
         type="button"
-        className="relative w-11 h-11 rounded-xl bg-white/[0.06] border border-white/20 flex items-center justify-center hover:bg-white/[0.14] hover:border-aurora-violet/60 transition-all shadow-md active:scale-95 cursor-pointer z-20"
+        className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white/[0.06] border border-white/20 flex items-center justify-center hover:bg-white/[0.14] hover:border-aurora-violet/60 transition-all shadow-md active:scale-95 cursor-pointer z-20 shrink-0"
         title="Notifications"
       >
-        <Bell className="w-5 h-5 text-white" strokeWidth={2.2} />
+        <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-ink-50" strokeWidth={2.2} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[22px] h-[22px] px-1.5 rounded-full bg-aurora-violet text-white text-xs font-black flex items-center justify-center ring-2 ring-void-950 shadow-glow animate-pulse">
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] sm:min-w-[22px] sm:h-[22px] px-1 sm:px-1.5 rounded-full bg-aurora-violet text-white text-[10px] sm:text-xs font-black flex items-center justify-center ring-2 ring-void-950 shadow-glow animate-pulse">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -92,7 +102,7 @@ export default function NotificationBell() {
       {/* Silver Full-Page Modal Portal with Heavy Background Blur */}
       {open &&
         createPortal(
-          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-8 pointer-events-auto">
+          <div className="theme-frozen fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-8 pointer-events-auto">
             {/* Backdrop layer blurs out the entire background dashboard */}
             <div
               className="fixed inset-0 bg-black/75 backdrop-blur-xl transition-all duration-300"

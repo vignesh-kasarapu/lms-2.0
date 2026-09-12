@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Scale, AlertTriangle } from 'lucide-react';
 import { getEmployeeLedger, adjustBalance } from '../../api/ledger';
 import { listEmployees } from '../../api/employees';
@@ -16,17 +16,25 @@ export default function BalanceAdjustmentAdmin() {
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [loadError, setLoadError] = useState(null);
   const [confirming, setConfirming] = useState(false);
+  const ledgerRequestId = useRef(0);
 
   useEffect(() => {
-    listEmployees().then((res) => setEmployees(res.data));
-    listLeaveTypesShort().then((res) => setLeaveTypes(res.data));
+    listEmployees().then((res) => setEmployees(res.data)).catch((err) => setLoadError(err.message));
+    listLeaveTypesShort().then((res) => setLeaveTypes(res.data)).catch((err) => setLoadError(err.message));
   }, []);
 
   useEffect(() => {
     if (employeeId && leaveTypeId) {
-      getEmployeeLedger(employeeId, { leaveTypeId }).then((res) => setLedger(res.data));
+      // Guard against a stale, slower response overwriting the ledger for a
+      // selection the user has since moved away from.
+      const requestId = ++ledgerRequestId.current;
+      getEmployeeLedger(employeeId, { leaveTypeId })
+        .then((res) => { if (requestId === ledgerRequestId.current) { setLedger(res.data); setLoadError(null); } })
+        .catch((err) => { if (requestId === ledgerRequestId.current) setLoadError(err.message); });
     } else {
+      ledgerRequestId.current += 1;
       setLedger([]);
     }
   }, [employeeId, leaveTypeId]);
@@ -42,7 +50,10 @@ export default function BalanceAdjustmentAdmin() {
       setQuantity('');
       setReason('');
       setConfirming(false);
-      getEmployeeLedger(employeeId, { leaveTypeId }).then((res) => setLedger(res.data));
+      const requestId = ++ledgerRequestId.current;
+      getEmployeeLedger(employeeId, { leaveTypeId })
+        .then((res) => { if (requestId === ledgerRequestId.current) setLedger(res.data); })
+        .catch((err) => { if (requestId === ledgerRequestId.current) setLoadError(err.message); });
     } catch (err) {
       setError(err.message); // e.g. missing-reason refusal (LMS-054/BR-15)
     } finally {
@@ -53,10 +64,16 @@ export default function BalanceAdjustmentAdmin() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
       <GlassCard className="lg:col-span-2">
-        <h3 className="font-display font-bold text-slate-100 mb-1 flex items-center gap-2">
+        <h3 className="font-display font-bold text-ink-100 mb-1 flex items-center gap-2">
           <Scale className="w-4 h-4 text-aurora-violet" /> Balance adjustment
         </h3>
-        <p className="text-xs text-slate-500 mb-4">Every adjustment requires a reason and is written to the ledger — never silent.</p>
+        <p className="text-xs text-ink-500 mb-4">Every adjustment requires a reason and is written to the ledger — never silent.</p>
+
+        {loadError && (
+          <div className="flex items-start gap-2 text-xs text-status-rejected bg-status-rejected/10 border border-status-rejected/25 rounded-xl px-3 py-2.5 mb-3">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {loadError}
+          </div>
+        )}
 
         <div className="space-y-3">
           <select className="glass-input" value={employeeId} onChange={(e) => { setEmployeeId(e.target.value); setConfirming(false); }}>
@@ -70,9 +87,9 @@ export default function BalanceAdjustmentAdmin() {
 
           {employeeId && leaveTypeId && (
             <>
-              <div className="bg-white/[0.03] rounded-xl px-3 py-2.5 text-sm">
-                <p className="text-slate-500 text-xs">Current balance</p>
-                <p className="text-slate-100 font-semibold text-lg">{currentBalance.toFixed(1)}</p>
+              <div className="bg-frost/[0.03] rounded-xl px-3 py-2.5 text-sm">
+                <p className="text-ink-500 text-xs">Current balance</p>
+                <p className="text-ink-100 font-semibold text-lg">{currentBalance.toFixed(1)}</p>
               </div>
 
               <input type="number" step="0.5" className="glass-input" placeholder="Signed quantity (e.g. -2 or 5)" value={quantity}
@@ -81,9 +98,9 @@ export default function BalanceAdjustmentAdmin() {
                 onChange={(e) => { setReason(e.target.value); setConfirming(false); }} />
 
               {quantity && (
-                <div className="bg-white/[0.03] rounded-xl px-3 py-2.5 text-sm">
-                  <p className="text-slate-500 text-xs">Projected balance after this adjustment</p>
-                  <p className={`font-semibold text-lg ${projectedBalance < 0 ? 'text-status-advance' : 'text-slate-100'}`}>{projectedBalance.toFixed(1)}</p>
+                <div className="bg-frost/[0.03] rounded-xl px-3 py-2.5 text-sm">
+                  <p className="text-ink-500 text-xs">Projected balance after this adjustment</p>
+                  <p className={`font-semibold text-lg ${projectedBalance < 0 ? 'text-status-advance' : 'text-ink-100'}`}>{projectedBalance.toFixed(1)}</p>
                 </div>
               )}
 
@@ -109,24 +126,24 @@ export default function BalanceAdjustmentAdmin() {
       </GlassCard>
 
       <GlassCard className="lg:col-span-3">
-        <h3 className="font-display font-bold text-slate-100 mb-4">Full ledger</h3>
+        <h3 className="font-display font-bold text-ink-100 mb-4">Full ledger</h3>
         {!employeeId || !leaveTypeId ? (
-          <p className="text-sm text-slate-500">Select an employee and leave type to see their ledger.</p>
+          <p className="text-sm text-ink-500">Select an employee and leave type to see their ledger.</p>
         ) : !ledger.length ? (
-          <p className="text-sm text-slate-500">No ledger entries for this employee/type/year.</p>
+          <p className="text-sm text-ink-500">No ledger entries for this employee/type/year.</p>
         ) : (
-          <div className="divide-y divide-white/5 max-h-[480px] overflow-y-auto">
+          <div className="divide-y divide-frost/5 max-h-[480px] overflow-y-auto">
             {ledger.map((entry) => (
               <div key={entry.entry_id} className="py-2.5 flex items-center justify-between text-sm">
                 <div>
-                  <p className="text-slate-200">{entry.entry_type.replaceAll('_', ' ').toLowerCase()}</p>
-                  <p className="text-xs text-slate-500">{new Date(entry.created_at).toLocaleDateString()} · {entry.source_reference}</p>
+                  <p className="text-ink-200">{entry.entry_type.replaceAll('_', ' ').toLowerCase()}</p>
+                  <p className="text-xs text-ink-500">{new Date(entry.created_at).toLocaleDateString()} · {entry.source_reference}</p>
                 </div>
                 <div className="text-right">
                   <p className={parseFloat(entry.quantity) < 0 ? 'text-status-rejected' : 'text-status-approved'}>
                     {parseFloat(entry.quantity) > 0 ? '+' : ''}{entry.quantity}
                   </p>
-                  <p className="text-xs text-slate-500">bal: {entry.running_balance.toFixed(1)}</p>
+                  <p className="text-xs text-ink-500">bal: {entry.running_balance.toFixed(1)}</p>
                 </div>
               </div>
             ))}

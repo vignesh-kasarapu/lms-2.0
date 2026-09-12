@@ -26,7 +26,7 @@ async function leaveTakenReport({ from, to, leaveTypeId, status, departmentId, g
     where,
     include: [
       { model: LeaveType, attributes: ['type_name'] },
-      { model: Employee, as: 'employee', where: employeeWhere, attributes: ['full_name', 'employee_code', 'department_id', 'grade_id'] },
+      { model: Employee, as: 'employee', where: employeeWhere, attributes: ['full_name', 'first_name', 'last_name', 'employee_code', 'department_id', 'grade_id'] },
     ],
     order: [['start_date', 'DESC']],
   });
@@ -40,16 +40,19 @@ async function lopReport({ from, to }) {
 
   return LopRecord.findAll({
     where,
-    include: [{ model: Employee, attributes: ['full_name', 'employee_code'] }],
+    include: [{ model: Employee, attributes: ['full_name', 'first_name', 'last_name', 'employee_code'] }],
     order: [['converted_at', 'DESC']],
   });
 }
 
 async function balancesReport({ leaveYearId }) {
+  if (!leaveYearId) {
+    throw Object.assign(new Error('leaveYearId is required'), { status: 400, code: 'MISSING_LEAVE_YEAR_ID' });
+  }
   return LeaveLedger.findAll({
     where: { leave_year_id: leaveYearId },
     include: [
-      { model: Employee, attributes: ['full_name', 'employee_code'] },
+      { model: Employee, attributes: ['full_name', 'first_name', 'last_name', 'employee_code'] },
       { model: LeaveType, attributes: ['type_name'] },
     ],
     order: [['employee_id', 'ASC'], ['created_at', 'ASC']],

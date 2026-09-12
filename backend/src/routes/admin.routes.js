@@ -34,6 +34,7 @@ router.post('/self-approval-permissions/:grantId/revoke', controller.selfApprova
 router.get('/working-patterns', controller.workingPatterns.list);
 router.post('/working-patterns', controller.workingPatterns.create);
 router.post('/working-patterns/:workingPatternId/deactivate', controller.workingPatterns.deactivate);
+router.post('/working-patterns/:workingPatternId/reactivate', controller.workingPatterns.reactivate);
 router.post('/working-pattern-assignments', controller.workingPatterns.assign);
 router.get('/working-pattern-assignments', controller.workingPatterns.assignments);
 router.patch('/working-pattern-assignments/:assignmentId', controller.workingPatterns.updateAssignment);

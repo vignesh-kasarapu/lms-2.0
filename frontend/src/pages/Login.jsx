@@ -1,10 +1,20 @@
 import { motion } from 'framer-motion';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import BackgroundEffects from '../components/login/BackgroundEffects';
 import Header from '../components/login/Header';
 import HeroSection from '../components/login/HeroSection';
 import LoginCard from '../components/login/LoginCard';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
+  const [searchParams] = useSearchParams();
+  const signInError = searchParams.get('error');
+  const { user, loading } = useAuth();
+
+  // A signed-in user who navigates back to /login (bookmark, back button) should land in
+  // the app, not see the marketing page again.
+  if (!loading && user) return <Navigate to="/" replace />;
+
   return (
     <div className="relative min-h-screen w-full overflow-hidden">
       <BackgroundEffects />
@@ -28,7 +38,7 @@ export default function Login() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: 'easeOut', delay: 0.15 }}
           >
-            <LoginCard />
+            <LoginCard signInError={signInError} />
           </motion.div>
         </div>
       </div>

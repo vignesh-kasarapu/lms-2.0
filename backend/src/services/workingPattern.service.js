@@ -2,7 +2,12 @@ const { Op } = require('sequelize');
 const { WorkingPattern, WorkingPatternAssignment, Employee } = require('../models');
 const auditService = require('./audit.service');
 
-async function listPatterns() { return WorkingPattern.findAll({ where: { is_active: true }, order: [['pattern_name', 'ASC']] }); }
+/** `includeInactive` is admin-screen-only (mirrors blackoutPeriod.service.js's
+ * listBlackoutPeriods) — every business-logic caller (assignPattern's active check,
+ * getWeekendOverrideForDate) must keep seeing active patterns only. */
+async function listPatterns({ includeInactive = false } = {}) {
+  return WorkingPattern.findAll({ where: includeInactive ? {} : { is_active: true }, order: [['pattern_name', 'ASC']] });
+}
 
 async function listAssignments() {
   return WorkingPatternAssignment.findAll({
@@ -38,6 +43,18 @@ async function deactivatePattern(workingPatternId, actorId) {
   return { deactivated: true };
 }
 
+/** Reactivating is always safe — no in-use guard needed (unlike deactivatePattern),
+ * since flipping is_active back to true only makes the pattern selectable again. */
+async function reactivatePattern(workingPatternId, actorId) {
+  const pattern = await WorkingPattern.findByPk(workingPatternId);
+  if (!pattern) throw Object.assign(new Error('Working pattern not found'), { status: 404, code: 'NOT_FOUND' });
+
+  pattern.is_active = true;
+  await pattern.save();
+  await auditService.record({ actorId, action: 'WORKING_PATTERN_REACTIVATED', entityType: 'working_patterns', entityId: workingPatternId });
+  return { reactivated: true };
+}
+
 async function createPattern({ patternCode, patternName, weekendDays }, actorId) {
   const pattern = await WorkingPattern.create({
     pattern_code: patternCode, pattern_name: patternName, weekend_days: JSON.stringify(weekendDays),
@@ -71,6 +88,11 @@ function assertNoOverlap(existing, newFrom, newTo) {
  * Postgres or MySQL without extensions this project doesn't require elsewhere).
  */
 async function assignPattern({ employeeId, workingPatternId, effectiveFrom, effectiveTo, assignedBy }) {
+  const pattern = await WorkingPattern.findByPk(workingPatternId);
+  if (!pattern || !pattern.is_active) {
+    throw Object.assign(new Error('This working pattern is not active and cannot be assigned.'), { status: 400, code: 'WORKING_PATTERN_INACTIVE' });
+  }
+
   const existing = await WorkingPatternAssignment.findAll({ where: { employee_id: employeeId } });
   assertNoOverlap(existing, new Date(effectiveFrom), effectiveTo ? new Date(effectiveTo) : null);
 
@@ -88,6 +110,13 @@ async function assignPattern({ employeeId, workingPatternId, effectiveFrom, effe
 async function updateAssignment(assignmentId, { workingPatternId, effectiveFrom, effectiveTo }, actorId) {
   const assignment = await WorkingPatternAssignment.findByPk(assignmentId);
   if (!assignment) throw Object.assign(new Error('Assignment not found'), { status: 404, code: 'NOT_FOUND' });
+
+  if (workingPatternId !== undefined) {
+    const newPattern = await WorkingPattern.findByPk(workingPatternId);
+    if (!newPattern || !newPattern.is_active) {
+      throw Object.assign(new Error('This working pattern is not active and cannot be assigned.'), { status: 400, code: 'WORKING_PATTERN_INACTIVE' });
+    }
+  }
 
   const newFrom = effectiveFrom !== undefined ? new Date(effectiveFrom) : new Date(assignment.effective_from);
   const newToRaw = effectiveTo !== undefined ? effectiveTo : assignment.effective_to;
@@ -129,4 +158,4 @@ async function getWeekendOverrideForDate(employeeId, isoDate) {
   return JSON.parse(assignment.WorkingPattern.weekend_days);
 }
 
-module.exports = { listPatterns, listAssignments, createPattern, assignPattern, updateAssignment, getWeekendOverrideForDate, deactivatePattern };
+module.exports = { listPatterns, listAssignments, createPattern, assignPattern, updateAssignment, getWeekendOverrideForDate, deactivatePattern, reactivatePattern };

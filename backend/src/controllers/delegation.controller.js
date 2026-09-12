@@ -32,7 +32,9 @@ async function createOnBehalf(req, res) {
 }
 
 async function revoke(req, res) {
-  const delegation = await delegationService.revoke(req.params.delegationId, req.currentUser.employeeId);
+  const delegation = await delegationService.revoke(
+    req.params.delegationId, req.currentUser.employeeId, req.currentUser.roles.includes('HR_ADMIN'),
+  );
   return ok(res, delegation);
 }
 

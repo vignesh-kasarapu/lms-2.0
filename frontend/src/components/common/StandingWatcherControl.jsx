@@ -24,29 +24,29 @@ function WatcherPicker({ candidates, value, onChange }) {
         onClick={() => setOpen((o) => !o)}
         className="glass-input !py-1.5 !text-xs w-full flex items-center justify-between text-left"
       >
-        <span className={selected ? 'text-slate-100' : 'text-slate-500'}>
+        <span className={selected ? 'text-ink-100' : 'text-ink-500'}>
           {selected ? selected.full_name : 'Watcher…'}
         </span>
-        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3.5 h-3.5 text-ink-400 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-1 w-56 max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-slate-950/95 backdrop-blur-xl shadow-2xl py-1">
+        <div className="absolute z-20 mt-1 w-56 max-h-64 overflow-y-auto rounded-xl border border-frost/10 bg-ink-950/95 backdrop-blur-xl shadow-2xl py-1">
           {candidates.map((c) => (
             <button
               key={c.employee_id}
               type="button"
               onClick={() => { onChange(c.employee_id); setOpen(false); }}
-              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-white/[0.06] transition-colors"
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-frost/[0.06] transition-colors"
             >
               <div className="min-w-0">
-                <p className="text-xs font-bold text-slate-100 truncate">{c.full_name}</p>
-                <p className="text-[10px] text-slate-500 truncate">
+                <p className="text-xs font-bold text-ink-100 truncate">{c.full_name}</p>
+                <p className="text-[10px] text-ink-500 truncate">
                   {[c.Department?.department_name, c.designation].filter(Boolean).join(' · ') || 'No department on record'}
                 </p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[9px] font-mono text-slate-600">#{c.employee_id}</span>
+                <span className="text-[9px] font-mono text-ink-600">#{c.employee_id}</span>
                 {String(value) === String(c.employee_id) && <Check className="w-3.5 h-3.5 text-emerald-400" />}
               </div>
             </button>
@@ -65,12 +65,14 @@ export default function StandingWatcherControl({ employeeId, employeeName }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const load = () => listStandingWatchers(employeeId).then((res) => setCurrent(res.data));
+  const load = () => listStandingWatchers(employeeId).then((res) => setCurrent(res.data)).catch((err) => setError(err.message));
 
   useEffect(() => {
     if (open) {
       load();
-      getWatchableEmployees().then((res) => setCandidates(res.data.filter((c) => String(c.employee_id) !== String(employeeId))));
+      getWatchableEmployees()
+        .then((res) => setCandidates(res.data.filter((c) => String(c.employee_id) !== String(employeeId))))
+        .catch((err) => setError(err.message));
     }
   }, [open]);
 
@@ -93,6 +95,15 @@ export default function StandingWatcherControl({ employeeId, employeeName }) {
     }
   };
 
+  // Exclude anyone who already has a non-expired standing-watcher row for this
+  // employee — re-adding them (even for a different date window) is rarely
+  // intentional and would otherwise create a duplicate/overlapping entry.
+  const today = new Date().toISOString().slice(0, 10);
+  const activeWatcherIds = new Set(
+    current.filter((s) => s.to_date >= today).map((s) => String(s.watcher_employee_id))
+  );
+  const availableCandidates = candidates.filter((c) => !activeWatcherIds.has(String(c.employee_id)));
+
   if (!open) {
     return (
       <GhostButton onClick={() => setOpen(true)} className="!px-2.5 !py-1.5 text-xs">
@@ -102,17 +113,17 @@ export default function StandingWatcherControl({ employeeId, employeeName }) {
   }
 
   return (
-    <div className="w-full p-3 bg-white/[0.03] rounded-xl space-y-2 text-xs">
-      <p className="text-slate-400">Standing watchers on {employeeName}</p>
+    <div className="w-full p-3 bg-frost/[0.03] rounded-xl space-y-2 text-xs">
+      <p className="text-ink-400">Standing watchers on {employeeName}</p>
       {current.map((s) => (
-        <div key={s.standing_watcher_id} className="text-slate-300 bg-white/[0.04] rounded-lg px-2.5 py-1.5">
+        <div key={s.standing_watcher_id} className="text-ink-300 bg-frost/[0.04] rounded-lg px-2.5 py-1.5">
           {s.watcherEmployee?.full_name} · {s.from_date} → {s.to_date}
         </div>
       ))}
       <form onSubmit={submit} className="flex flex-wrap gap-1.5 items-center pt-1">
         <div className="w-40">
           <WatcherPicker
-            candidates={candidates}
+            candidates={availableCandidates}
             value={form.watcherEmployeeId}
             onChange={(id) => setForm((f) => ({ ...f, watcherEmployeeId: id }))}
           />

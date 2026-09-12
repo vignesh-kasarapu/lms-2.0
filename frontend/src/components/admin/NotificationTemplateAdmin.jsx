@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MessageSquareText, Save, Plus, Trash2 } from 'lucide-react';
+import { MessageSquareText, Save, Plus, Trash2, ShieldAlert, AlertTriangle } from 'lucide-react';
 import {
   listNotificationTemplates, createNotificationTemplate, updateNotificationTemplate,
   setNotificationTemplateActive, deleteNotificationTemplate,
@@ -10,6 +10,21 @@ import { PrimaryButton, GhostButton } from '../common/GlassButton';
 
 const emptyNew = { templateKey: '', subjectTemplate: '', bodyTemplate: '' };
 
+// Keep this list in sync with backend/src/services/notificationAdmin.service.js's
+// PROTECTED_TEMPLATE_KEYS. Those keys are referenced directly by business logic, so the
+// backend refuses to hard-delete them (disabling is still fully supported). This copy
+// is display-only — it just lets the UI show a "Protected" badge and steer the delete
+// confirmation toward "disable instead"; the backend remains the actual enforcement.
+const PROTECTED_TEMPLATE_KEYS = new Set([
+  'BALANCE_ADJUSTED', 'CARRY_FORWARD_APPLIED', 'SLA_REMINDER', 'ESCALATION_NOTICE_TO_PRIOR_APPROVER',
+  'NEW_REQUEST_AWAITING_DECISION', 'LOSS_OF_PAY_APPLIED', 'COMP_OFF_CREDITED', 'DELEGATE_ASSIGNED_TO_YOU',
+  'EMPLOYEE_ONBOARDING_INVITE', 'MANAGER_REASSIGNED', 'LEAVE_ENCASHMENT_POSTED', 'REQUEST_AWAITING_DECISION',
+  'EXTENDED_SICK_LEAVE_ALERT', 'REQUEST_SUBMITTED_CONFIRMATION', 'LONG_LEAVE_SUPERVISOR_NOTICE',
+  'REQUEST_APPROVED', 'REQUEST_REJECTED', 'CANCELLATION_REQUEST_AWAITING_DECISION', 'CANCELLATION_APPROVED',
+  'CANCELLATION_REJECTED', 'SELF_APPROVAL_GRANTED', 'WATCHED_REQUEST_SUBMITTED', 'WATCHED_REQUEST_APPROVED',
+  'WATCHED_REQUEST_REJECTED', 'WATCHED_REQUEST_CANCELLED',
+]);
+
 export default function NotificationTemplateAdmin() {
   const [templates, setTemplates] = useState([]);
   const [selectedKey, setSelectedKey] = useState(null);
@@ -19,6 +34,12 @@ export default function NotificationTemplateAdmin() {
   const [newTemplate, setNewTemplate] = useState(emptyNew);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState(null);
+  const [error, setError] = useState(null);
+  // Mirrors Approvals.jsx's processingId pattern — tracks which template key currently
+  // has an in-flight enable/disable request so a rapid double-click can't fire it twice.
+  const [togglingKey, setTogglingKey] = useState(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const load = () => listNotificationTemplates().then((res) => {
     setTemplates(res.data);
@@ -29,29 +50,68 @@ export default function NotificationTemplateAdmin() {
   const selectTemplate = (t) => {
     setSelectedKey(t.template_key);
     setDraft({ subjectTemplate: t.subject_template, bodyTemplate: t.body_template });
+    setError(null);
   };
 
   const selected = templates.find((t) => t.template_key === selectedKey);
+  const selectedIsProtected = !!selected && PROTECTED_TEMPLATE_KEYS.has(selected.template_key);
 
   const save = async () => {
     setSaving(true);
+    setError(null);
     try {
       await updateNotificationTemplate(selectedKey, draft);
-      load();
+      await load();
+    } catch (err) {
+      setError(err.message);
     } finally {
       setSaving(false);
     }
   };
 
   const toggleActive = async () => {
-    await setNotificationTemplateActive(selectedKey, !selected.is_active);
-    load();
+    if (togglingKey) return; // in-flight guard — ignore a second click while one is pending
+    setTogglingKey(selectedKey);
+    setError(null);
+    try {
+      await setNotificationTemplateActive(selectedKey, !selected.is_active);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setTogglingKey(null);
+    }
   };
 
   const remove = async () => {
-    await deleteNotificationTemplate(selectedKey);
-    setSelectedKey(null);
-    load();
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteNotificationTemplate(selectedKey);
+      setConfirmingDelete(false);
+      setSelectedKey(null);
+      await load();
+    } catch (err) {
+      // Surfaces the backend's own "used directly by the application... disable it
+      // instead" message when it refuses to hard-delete a protected key.
+      setError(err.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const disableInstead = async () => {
+    setDeleting(true);
+    setError(null);
+    try {
+      await setNotificationTemplateActive(selectedKey, false);
+      setConfirmingDelete(false);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const submitNew = async (e) => {
@@ -75,7 +135,7 @@ export default function NotificationTemplateAdmin() {
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
       <GlassCard className="lg:col-span-2">
         <div className="flex items-center justify-between gap-2 mb-4">
-          <h3 className="font-display font-bold text-slate-100 flex items-center gap-2">
+          <h3 className="font-display font-bold text-ink-100 flex items-center gap-2">
             <MessageSquareText className="w-4 h-4 text-aurora-violet" /> Templates
           </h3>
           <button type="button" onClick={() => setAdding(true)} className="ghost-btn !px-2.5 !py-1.5 text-xs" title="Add a new template">
@@ -85,13 +145,21 @@ export default function NotificationTemplateAdmin() {
         <div className="space-y-1 max-h-[440px] overflow-y-auto">
           {templates.map((t) => (
             <button key={t.template_key} onClick={() => selectTemplate(t)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between gap-2 ${selectedKey === t.template_key ? 'bg-white/[0.08] text-white' : 'text-slate-400 hover:bg-white/[0.04]'}`}>
+              className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between gap-2 ${selectedKey === t.template_key ? 'bg-frost/[0.08] text-ink-50' : 'text-ink-400 hover:bg-frost/[0.04]'}`}>
               <span className="truncate">{t.template_key}</span>
-              {!t.is_active && (
-                <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-status-rejected/10 text-status-rejected border border-status-rejected/30 shrink-0">
-                  Disabled
-                </span>
-              )}
+              <span className="flex items-center gap-1 shrink-0">
+                {PROTECTED_TEMPLATE_KEYS.has(t.template_key) && (
+                  <span title="Used directly by the application — cannot be deleted, only disabled"
+                    className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 flex items-center gap-0.5">
+                    <ShieldAlert className="w-2.5 h-2.5" /> Protected
+                  </span>
+                )}
+                {!t.is_active && (
+                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-status-rejected/10 text-status-rejected border border-status-rejected/30">
+                    Disabled
+                  </span>
+                )}
+              </span>
             </button>
           ))}
         </div>
@@ -99,25 +167,36 @@ export default function NotificationTemplateAdmin() {
 
       <GlassCard className="lg:col-span-3">
         {!selected ? (
-          <p className="text-sm text-slate-500">Select a template to edit.</p>
+          <p className="text-sm text-ink-500">Select a template to edit.</p>
         ) : (
           <div className="space-y-3">
+            {selectedIsProtected && (
+              <div className="flex items-start gap-2 text-xs font-medium text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-3">
+                <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>This template is used directly by the application and can&apos;t be deleted — you can still edit or disable it.</span>
+              </div>
+            )}
             <div>
-              <label className="text-xs font-medium text-slate-400 mb-1.5 block">Subject</label>
+              <label className="text-xs font-medium text-ink-400 mb-1.5 block">Subject</label>
               <input className="glass-input" value={draft.subjectTemplate} onChange={(e) => setDraft((d) => ({ ...d, subjectTemplate: e.target.value }))} />
             </div>
             <div>
-              <label className="text-xs font-medium text-slate-400 mb-1.5 block">Body — use {'{{tokenName}}'} for substitutions</label>
+              <label className="text-xs font-medium text-ink-400 mb-1.5 block">Body — use {'{{tokenName}}'} for substitutions</label>
               <textarea className="glass-input min-h-[140px] resize-none font-mono" value={draft.bodyTemplate} onChange={(e) => setDraft((d) => ({ ...d, bodyTemplate: e.target.value }))} />
             </div>
+            {error && (
+              <div className="flex items-start gap-2.5 text-xs font-semibold text-status-rejected bg-status-rejected/10 border border-status-rejected/30 rounded-xl p-3">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {error}
+              </div>
+            )}
             <div className="flex items-center gap-2 flex-wrap">
               <PrimaryButton onClick={save} disabled={saving}>
                 <Save className="w-3.5 h-3.5" /> {saving ? 'Saving…' : 'Save template'}
               </PrimaryButton>
-              <GhostButton onClick={toggleActive} className="text-xs">
-                {selected.is_active ? 'Disable' : 'Enable'}
+              <GhostButton onClick={toggleActive} disabled={togglingKey === selectedKey} className="text-xs disabled:opacity-50">
+                {togglingKey === selectedKey ? 'Working…' : selected.is_active ? 'Disable' : 'Enable'}
               </GhostButton>
-              <button type="button" onClick={remove}
+              <button type="button" onClick={() => setConfirmingDelete(true)}
                 className="ghost-btn !px-3 !py-2 text-xs hover:border-status-rejected/40 hover:text-status-rejected ml-auto">
                 <Trash2 className="w-3.5 h-3.5" /> Delete
               </button>
@@ -129,17 +208,17 @@ export default function NotificationTemplateAdmin() {
       <Modal open={adding} onClose={() => setAdding(false)} title="New notification template" maxWidth="max-w-lg">
         <form onSubmit={submitNew} className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-slate-400 mb-1.5 block">Template key</label>
+            <label className="text-xs font-medium text-ink-400 mb-1.5 block">Template key</label>
             <input className="glass-input font-mono" placeholder="e.g. CUSTOM_REMINDER" value={newTemplate.templateKey}
               onChange={(e) => setNewTemplate((t) => ({ ...t, templateKey: e.target.value.toUpperCase().replace(/\s+/g, '_') }))} required />
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-400 mb-1.5 block">Subject</label>
+            <label className="text-xs font-medium text-ink-400 mb-1.5 block">Subject</label>
             <input className="glass-input" value={newTemplate.subjectTemplate}
               onChange={(e) => setNewTemplate((t) => ({ ...t, subjectTemplate: e.target.value }))} required />
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-400 mb-1.5 block">Body — use {'{{tokenName}}'} for substitutions</label>
+            <label className="text-xs font-medium text-ink-400 mb-1.5 block">Body — use {'{{tokenName}}'} for substitutions</label>
             <textarea className="glass-input min-h-[120px] resize-none font-mono" value={newTemplate.bodyTemplate}
               onChange={(e) => setNewTemplate((t) => ({ ...t, bodyTemplate: e.target.value }))} required />
           </div>
@@ -148,6 +227,36 @@ export default function NotificationTemplateAdmin() {
             {creating ? 'Creating…' : 'Create template'}
           </PrimaryButton>
         </form>
+      </Modal>
+
+      <Modal open={confirmingDelete} onClose={() => setConfirmingDelete(false)} title="Delete this template?" maxWidth="max-w-md">
+        <div className="space-y-4">
+          {selectedIsProtected ? (
+            <p className="text-sm text-ink-200">
+              <strong className="font-mono">{selectedKey}</strong> is used directly by the application and cannot be
+              deleted — disable it instead if you don&apos;t want it sent.
+            </p>
+          ) : (
+            <p className="text-sm text-ink-200">
+              Really delete <strong className="font-mono">{selectedKey}</strong>? This cannot be undone.
+            </p>
+          )}
+          {error && <p className="text-xs font-semibold text-status-rejected bg-status-rejected/10 p-2 rounded-lg">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <GhostButton onClick={() => setConfirmingDelete(false)} disabled={deleting} className="text-xs">Cancel</GhostButton>
+            {selectedIsProtected ? (
+              <button type="button" onClick={disableInstead} disabled={deleting}
+                className="bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all disabled:opacity-40">
+                {deleting ? 'Disabling…' : 'Disable instead'}
+              </button>
+            ) : (
+              <button type="button" onClick={remove} disabled={deleting}
+                className="bg-status-rejected hover:bg-rose-600 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all disabled:opacity-40">
+                {deleting ? 'Deleting…' : 'Confirm delete'}
+              </button>
+            )}
+          </div>
+        </div>
       </Modal>
     </div>
   );

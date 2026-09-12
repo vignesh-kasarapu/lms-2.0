@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { BookOpenText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookOpenText, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { getAllLedgerEntries } from '../../api/ledger';
 import { listEmployees } from '../../api/employees';
 import { listLeaveTypes } from '../../api/admin';
 import GlassCard from '../common/GlassCard';
 import Table from '../common/Table';
+import EmptyState from '../common/EmptyState';
 
 const ENTRY_TYPES = [
   'OPENING_PRO_RATA_CREDIT', 'PERIODIC_ACCRUAL_CREDIT', 'CARRY_FORWARD_CREDIT',
@@ -30,17 +31,22 @@ export default function LedgerAdmin() {
   const [result, setResult] = useState({ total: 0, page: 1, pageSize: 50, entries: [] });
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    listEmployees().then((res) => setEmployees(res.data));
-    listLeaveTypes().then((res) => setLeaveTypes(res.data));
+    listEmployees().then((res) => setEmployees(res.data)).catch((err) => setError(err.message));
+    listLeaveTypes().then((res) => setLeaveTypes(res.data)).catch((err) => setError(err.message));
   }, []);
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     const params = { ...filters, page };
     Object.keys(params).forEach((k) => { if (!params[k]) delete params[k]; });
-    getAllLedgerEntries(params).then((res) => setResult(res.data)).finally(() => setLoading(false));
+    getAllLedgerEntries(params)
+      .then((res) => setResult(res.data))
+      .catch((err) => { setError(err.message); setResult({ total: 0, page: 1, pageSize: 50, entries: [] }); })
+      .finally(() => setLoading(false));
   }, [filters, page]);
 
   const updateFilter = (key, value) => {
@@ -52,10 +58,10 @@ export default function LedgerAdmin() {
 
   return (
     <GlassCard>
-      <h3 className="font-display font-bold text-slate-100 mb-1 flex items-center gap-2">
+      <h3 className="font-display font-bold text-ink-100 mb-1 flex items-center gap-2">
         <BookOpenText className="w-4 h-4 text-aurora-violet" /> Leave ledger
       </h3>
-      <p className="text-xs text-slate-500 mb-4">Every balance-affecting transaction across every employee, with filters.</p>
+      <p className="text-xs text-ink-500 mb-4">Every balance-affecting transaction across every employee, with filters.</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-4">
         <select className="glass-input !py-2 text-xs" value={filters.employeeId} onChange={(e) => updateFilter('employeeId', e.target.value)}>
@@ -77,27 +83,29 @@ export default function LedgerAdmin() {
       </div>
 
       {loading ? (
-        <div className="space-y-2">{[1, 2, 3, 4].map((i) => <div key={i} className="h-11 rounded-xl bg-white/[0.03] animate-pulse" />)}</div>
+        <div className="space-y-2">{[1, 2, 3, 4].map((i) => <div key={i} className="h-11 rounded-xl bg-frost/[0.03] animate-pulse" />)}</div>
+      ) : error ? (
+        <EmptyState icon={AlertTriangle} title="Couldn't load the ledger" description={error} />
       ) : !result.entries.length ? (
-        <p className="text-xs text-slate-500 text-center py-8">No ledger entries match these filters.</p>
+        <p className="text-xs text-ink-500 text-center py-8">No ledger entries match these filters.</p>
       ) : (
         <>
           <Table columns={COLUMNS} maxHeight="max-h-[55vh]">
             {result.entries.map((e) => (
-              <tr key={e.entry_id} className="hover:bg-white/[0.03] transition-colors">
-                <td className="px-4 py-2.5 text-xs text-slate-400 whitespace-nowrap">{new Date(e.created_at).toLocaleDateString()}</td>
-                <td className="px-4 py-2.5 text-sm text-slate-100 whitespace-nowrap">{e.Employee?.full_name || `#${e.employee_id}`}</td>
-                <td className="px-4 py-2.5 text-xs text-slate-300 whitespace-nowrap">{e.LeaveType?.type_name || `#${e.leave_type_id}`}</td>
-                <td className="px-4 py-2.5 text-xs text-slate-400 whitespace-nowrap">{e.entry_type.replaceAll('_', ' ')}</td>
+              <tr key={e.entry_id} className="hover:bg-frost/[0.03] transition-colors">
+                <td className="px-4 py-2.5 text-xs text-ink-400 whitespace-nowrap">{new Date(e.created_at).toLocaleDateString()}</td>
+                <td className="px-4 py-2.5 text-sm text-ink-100 whitespace-nowrap">{e.Employee?.full_name || `#${e.employee_id}`}</td>
+                <td className="px-4 py-2.5 text-xs text-ink-300 whitespace-nowrap">{e.LeaveType?.type_name || `#${e.leave_type_id}`}</td>
+                <td className="px-4 py-2.5 text-xs text-ink-400 whitespace-nowrap">{e.entry_type.replaceAll('_', ' ')}</td>
                 <td className={`px-4 py-2.5 text-sm font-bold whitespace-nowrap ${parseFloat(e.quantity) < 0 ? 'text-status-rejected' : 'text-status-approved'}`}>
                   {parseFloat(e.quantity) > 0 ? '+' : ''}{e.quantity}
                 </td>
-                <td className="px-4 py-2.5 text-xs text-slate-500 max-w-xs truncate">{e.reason || e.source_reference}</td>
+                <td className="px-4 py-2.5 text-xs text-ink-500 max-w-xs truncate">{e.reason || e.source_reference}</td>
               </tr>
             ))}
           </Table>
 
-          <div className="flex items-center justify-between mt-3 text-xs text-slate-400">
+          <div className="flex items-center justify-between mt-3 text-xs text-ink-400">
             <span>{result.total} total entries — page {result.page} of {totalPages}</span>
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page <= 1}

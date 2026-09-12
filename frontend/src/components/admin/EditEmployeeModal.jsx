@@ -35,24 +35,24 @@ export default function EditEmployeeModal({ employee, managementLevels, regions,
     <Modal open onClose={onClose} title={`Edit ${employee.full_name}`}>
       <form onSubmit={submit} className="space-y-3">
         <div>
-          <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Full Name</label>
+          <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Full Name</label>
           <input className="glass-input" value={form.fullName}
             onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))} required />
         </div>
         <div>
-          <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Designation</label>
+          <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Designation</label>
           <input className="glass-input" value={form.designation}
             onChange={(e) => setForm((f) => ({ ...f, designation: e.target.value }))} required />
         </div>
         <div>
-          <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Department</label>
+          <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Department</label>
           <input className="glass-input" value={form.departmentName}
             onChange={(e) => setForm((f) => ({ ...f, departmentName: e.target.value }))} required />
         </div>
         {showManagementLevel && (
           <div>
-            <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Management Level</label>
-            <select className="glass-input text-slate-200 bg-void-900" value={form.managementLevelId}
+            <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Management Level</label>
+            <select className="glass-input text-ink-200 bg-void-900" value={form.managementLevelId}
               onChange={(e) => setForm((f) => ({ ...f, managementLevelId: e.target.value }))}>
               <option value="">No management level</option>
               {managementLevels.map((level) => (
@@ -65,8 +65,8 @@ export default function EditEmployeeModal({ employee, managementLevels, regions,
         )}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Gender</label>
-            <select className="glass-input text-slate-200 bg-void-900" value={form.gender}
+            <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Gender</label>
+            <select className="glass-input text-ink-200 bg-void-900" value={form.gender}
               onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value }))}>
               <option value="">Prefer not to say</option>
               <option value="MALE">Male</option>
@@ -74,14 +74,14 @@ export default function EditEmployeeModal({ employee, managementLevels, regions,
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Marital Status</label>
+            <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Marital Status</label>
             <input className="glass-input" placeholder="e.g. Single, Married" value={form.maritalStatus}
               onChange={(e) => setForm((f) => ({ ...f, maritalStatus: e.target.value }))} />
           </div>
         </div>
         <div>
-          <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Region of Working</label>
-          <select className="glass-input text-slate-200 bg-void-900" value={form.regionId}
+          <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Region of Working</label>
+          <select className="glass-input text-ink-200 bg-void-900" value={form.regionId}
             onChange={(e) => setForm((f) => ({ ...f, regionId: e.target.value }))}>
             <option value="">No region</option>
             {regions.map((r) => <option key={r.region_id} value={r.region_id}>{r.region_name}</option>)}

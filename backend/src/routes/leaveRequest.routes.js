@@ -16,7 +16,7 @@ router.get('/:requestId', requireAuth, controller.detail);
 router.post('/:requestId/decision', requireAuth, requireRole('MANAGER', 'HR_ADMIN'), controller.decide);
 router.post('/:requestId/withdraw', requireAuth, controller.withdraw);
 router.post('/:requestId/cancellation', requireAuth, controller.requestCancellation);
-router.post('/:requestId/cancellation/decision', requireAuth, requireRole('MANAGER'), controller.decideCancellation);
+router.post('/:requestId/cancellation/decision', requireAuth, requireRole('MANAGER', 'HR_ADMIN'), controller.decideCancellation);
 router.post('/:requestId/watchers', requireAuth, requireRole('MANAGER', 'HR_ADMIN'), controller.addWatcher);
 router.delete('/:requestId/watchers/:watcherId', requireAuth, requireRole('MANAGER', 'HR_ADMIN'), controller.removeWatcher);
 

@@ -17,7 +17,13 @@ const blackout = {
 
 // --- Team capacity limits (LMS-086), HR/Admin ---
 const capacity = {
-  listForManager: async (req, res) => ok(res, await capacityService.listForManager(req.params.managerId)),
+  listForManager: async (req, res) => {
+    const isHrAdmin = req.currentUser.roles.includes('HR_ADMIN');
+    if (!isHrAdmin && String(req.params.managerId) !== String(req.currentUser.employeeId)) {
+      return res.status(403).json({ success: false, error: { code: 'PERMISSION_DENIED', message: 'You can only view your own team capacity limits.' } });
+    }
+    return ok(res, await capacityService.listForManager(req.params.managerId));
+  },
   listAll: async (req, res) => ok(res, await capacityService.listAll()),
   create: async (req, res) => created(res, await capacityService.createLimit(req.body, req.currentUser.employeeId)),
   update: async (req, res) => ok(res, await capacityService.updateLimit(req.params.capacityLimitId, req.body, req.currentUser.employeeId)),

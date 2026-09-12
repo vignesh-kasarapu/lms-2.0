@@ -12,6 +12,10 @@ import EmptyState from '../components/common/EmptyState';
 export default function Delegation() {
   const { hasRole } = useAuth();
   const isHrAdmin = hasRole('HR_ADMIN');
+  // Roles are independent grants (see auth.middleware.js) — an HR_ADMIN isn't automatically
+  // also a MANAGER, and vice versa. Someone holding both must still reach their own
+  // self-service nominate/revoke/digest panel, not just the org-wide admin view.
+  const isManager = hasRole('MANAGER');
   const [eligible, setEligible] = useState({ candidates: [], fallbackUsed: false });
   const [mine, setMine] = useState([]);
   const [form, setForm] = useState({ delegateId: '', fromDate: '', toDate: '' });
@@ -28,18 +32,9 @@ export default function Delegation() {
   useEffect(() => {
     // Apply light emerald green theme to body
     document.body.classList.add('theme-hr');
-    if (!isHrAdmin) load();
+    if (isManager) load();
     return () => document.body.classList.remove('theme-hr');
-  }, [isHrAdmin]);
-
-  if (isHrAdmin) {
-    return (
-      <>
-        <Topbar title="Delegation Management" />
-        <DelegationAdmin />
-      </>
-    );
-  }
+  }, [isManager]);
 
   const toggleDigest = async () => {
     setDigestSaving(true);
@@ -67,8 +62,10 @@ export default function Delegation() {
     <>
       <Topbar title="Delegation Management" />
 
+      {isManager && (
+      <>
       {/* Daily Digest Feature Panel */}
-      <div className="glass-panel-hr p-4 mb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-teal-500/30 bg-slate-950/60">
+      <div className="glass-panel-hr p-4 mb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-teal-500/30 bg-ink-950/60">
         <div className="flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-2xl bg-teal-500/20 text-teal-300 flex items-center justify-center border border-teal-500/40 shadow-lg shadow-teal-500/10">
             <Mail className="w-5 h-5" />
@@ -82,14 +79,14 @@ export default function Delegation() {
                 Notification Control
               </span>
             </p>
-            <p className="text-xs text-slate-300 mt-0.5">
+            <p className="text-xs text-ink-300 mt-0.5">
               Receive one combined daily summary email of pending approvals instead of individual alerts.
             </p>
           </div>
         </div>
 
         {/* Right Side ON/OFF Toggle Switch & Clear Status Pill */}
-        <div className="flex items-center gap-3 self-end sm:self-center shrink-0 bg-slate-900/90 px-3 py-2 rounded-2xl border border-white/15 shadow-xl">
+        <div className="flex items-center gap-3 self-end sm:self-center shrink-0 bg-ink-900/90 px-3 py-2 rounded-2xl border border-frost/15 shadow-xl">
           <span
             className={`text-xs font-black px-3 py-1 rounded-xl border transition-all ${
               digestEnabled
@@ -105,13 +102,13 @@ export default function Delegation() {
             className={`relative w-14 h-7 rounded-full transition-all shrink-0 border-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-400/50 ${
               digestEnabled
                 ? 'bg-emerald-500 border-emerald-400 shadow-lg shadow-emerald-500/40'
-                : 'bg-slate-800 border-slate-600'
+                : 'bg-ink-800 border-ink-600'
             }`}
             title={digestEnabled ? 'Click to Turn OFF Daily Digest' : 'Click to Turn ON Daily Digest'}
           >
             <span
               className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-200 flex items-center justify-center text-[9px] font-black ${
-                digestEnabled ? 'translate-x-7 text-emerald-600' : 'translate-x-0 text-slate-600'
+                digestEnabled ? 'translate-x-7 text-emerald-600' : 'translate-x-0 text-ink-600'
               }`}
             />
           </button>
@@ -121,7 +118,7 @@ export default function Delegation() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
         {/* Nominate Delegate Form */}
         <div className="lg:col-span-2 glass-panel p-5 rounded-2xl border border-teal-500/30 hover:border-teal-500/50 transition-all">
-          <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-white/10">
+          <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-frost/10">
             <div className="w-9 h-9 rounded-xl bg-teal-500/20 text-teal-300 flex items-center justify-center border border-teal-500/30">
               <UserCog className="w-4 h-4" />
             </div>
@@ -138,8 +135,8 @@ export default function Delegation() {
           )}
 
           {!eligible.candidates.length && (
-            <div className="flex items-start gap-2 text-xs text-slate-400 bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 mb-4">
-              <Info className="w-4 h-4 shrink-0 mt-0.5 text-slate-500" />
+            <div className="flex items-start gap-2 text-xs text-ink-400 bg-frost/[0.03] border border-frost/10 rounded-xl px-3.5 py-2.5 mb-4">
+              <Info className="w-4 h-4 shrink-0 mt-0.5 text-ink-500" />
               <span>You have no peer managers under your supervisor, and no supervisor is on record — there&rsquo;s no one eligible to delegate to yet.</span>
             </div>
           )}
@@ -167,7 +164,7 @@ export default function Delegation() {
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-[11px] font-bold uppercase text-slate-400 mb-1 block">From Date</label>
+                  <label className="text-[11px] font-bold uppercase text-ink-400 mb-1 block">From Date</label>
                   <input
                     type="date"
                     className="glass-input"
@@ -177,7 +174,7 @@ export default function Delegation() {
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold uppercase text-slate-400 mb-1 block">To Date</label>
+                  <label className="text-[11px] font-bold uppercase text-ink-400 mb-1 block">To Date</label>
                   <input
                     type="date"
                     className="glass-input"
@@ -200,9 +197,9 @@ export default function Delegation() {
         </div>
 
         {/* Current Delegations List */}
-        <div className="lg:col-span-3 glass-panel p-5 rounded-2xl border border-white/10 hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
-            <h3 className="font-display font-extrabold text-slate-100 text-base flex items-center gap-2">
+        <div className="lg:col-span-3 glass-panel p-5 rounded-2xl border border-frost/10 hover:border-emerald-500/30 transition-all">
+          <div className="flex items-center justify-between pb-3 border-b border-frost/10 mb-4">
+            <h3 className="font-display font-extrabold text-ink-100 text-base flex items-center gap-2">
               Active & Scheduled Delegations
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
                 {mine.length} Total
@@ -213,7 +210,7 @@ export default function Delegation() {
           {!mine.length ? (
             <EmptyState icon={UserCog} title="No active delegations" description="Delegated approval permissions will be listed here." />
           ) : (
-            <div className="divide-y divide-white/10">
+            <div className="divide-y divide-frost/10">
               {mine.map((d) => (
                 <div key={d.delegation_id} className="py-3.5 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -221,10 +218,10 @@ export default function Delegation() {
                       <UserCheck className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-100">
+                      <p className="text-sm font-bold text-ink-100">
                         {d.nominator?.full_name} <span className="text-emerald-400 font-normal">→</span> {d.delegate?.full_name}
                       </p>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="text-xs text-ink-400 mt-0.5">
                         Active: <strong className="text-emerald-300">{d.from_date}</strong> to <strong className="text-emerald-300">{d.to_date}</strong>
                         {d.revoked_at && <span className="text-status-rejected ml-2 font-bold">(Revoked)</span>}
                       </p>
@@ -244,6 +241,14 @@ export default function Delegation() {
           )}
         </div>
       </div>
+      </>
+      )}
+
+      {isHrAdmin && (
+        <div className={isManager ? 'mt-6' : ''}>
+          <DelegationAdmin />
+        </div>
+      )}
     </>
   );
 }

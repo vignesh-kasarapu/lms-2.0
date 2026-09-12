@@ -9,25 +9,53 @@ export default {
       },
       colors: {
         // Deep space base — the aurora sits on top of this, never a flat black.
+        // CSS-variable driven so it flips to a light surface in light mode
+        // (see src/styles/index.css) without changing dark mode at all.
         void: {
-          950: '#05060F',
-          900: '#0A0D1F',
-          800: '#10142B',
-          700: '#171B3A',
+          950: 'rgb(var(--void-950) / <alpha-value>)',
+          900: 'rgb(var(--void-900) / <alpha-value>)',
+          800: 'rgb(var(--void-800) / <alpha-value>)',
+          700: 'rgb(var(--void-700) / <alpha-value>)',
+        },
+        // The "glass tint" color: white in dark mode (identical to today — every
+        // bg-frost/[x]/border-frost/x used to be bg-white/[x]/border-white/x), a dark
+        // navy tint in light mode, so translucent glass surfaces stay visible instead
+        // of vanishing into a white-on-white page.
+        frost: 'rgb(var(--frost) / <alpha-value>)',
+        // Text/border scale that mirrors Tailwind's own `slate` numerically, but is
+        // CSS-variable driven so it inverts brightness in light mode (100 <-> 900,
+        // etc.) — existing `slate-*` usages across the app were renamed to `ink-*`
+        // for this reason; `slate` itself is untouched and still available.
+        ink: {
+          50: 'rgb(var(--ink-50) / <alpha-value>)',
+          100: 'rgb(var(--ink-100) / <alpha-value>)',
+          200: 'rgb(var(--ink-200) / <alpha-value>)',
+          300: 'rgb(var(--ink-300) / <alpha-value>)',
+          400: 'rgb(var(--ink-400) / <alpha-value>)',
+          500: 'rgb(var(--ink-500) / <alpha-value>)',
+          600: 'rgb(var(--ink-600) / <alpha-value>)',
+          700: 'rgb(var(--ink-700) / <alpha-value>)',
+          800: 'rgb(var(--ink-800) / <alpha-value>)',
+          900: 'rgb(var(--ink-900) / <alpha-value>)',
+          950: 'rgb(var(--ink-950) / <alpha-value>)',
         },
         // Aurora accent trio — violet is primary, cyan is secondary, used sparingly together.
+        // CSS-variable driven: identical to today in dark mode, but darkened/more
+        // saturated in light mode so this same color used as plain text (icons,
+        // labels, links) stays readable against a light page instead of washing out.
         aurora: {
-          violet: '#8B6DFF',
-          cyan: '#3FE0D0',
-          rose: '#FF6F91',
+          violet: 'rgb(var(--aurora-violet) / <alpha-value>)',
+          cyan: 'rgb(var(--aurora-cyan) / <alpha-value>)',
+          rose: 'rgb(var(--aurora-rose) / <alpha-value>)',
         },
-        // Status language used consistently across every screen.
+        // Status language used consistently across every screen. Same CSS-variable
+        // approach as `aurora` above, for the same reason.
         status: {
-          approved: '#34D399',
-          pending: '#FBBF24',
-          rejected: '#FB7185',
-          advance: '#FB923C',
-          info: '#60A5FA',
+          approved: 'rgb(var(--status-approved) / <alpha-value>)',
+          pending: 'rgb(var(--status-pending) / <alpha-value>)',
+          rejected: 'rgb(var(--status-rejected) / <alpha-value>)',
+          advance: 'rgb(var(--status-advance) / <alpha-value>)',
+          info: 'rgb(var(--status-info) / <alpha-value>)',
         },
         glass: {
           border: 'rgba(255,255,255,0.10)',

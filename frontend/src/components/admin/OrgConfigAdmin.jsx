@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Settings2, Save } from 'lucide-react';
+import { Settings2, Save, AlertTriangle } from 'lucide-react';
 import { listConfig, updateConfig } from '../../api/config';
 import GlassCard from '../common/GlassCard';
+import EmptyState from '../common/EmptyState';
 import { PrimaryButton } from '../common/GlassButton';
 
 const FIELD_META = {
@@ -31,12 +32,26 @@ function fromDisplayValue(key, displayValue) {
   return JSON.stringify(displayValue.split(',').map((d) => d.trim().toUpperCase()).filter(Boolean));
 }
 
+// INT fields are freeform text inputs — validate client-side rather than letting a bad
+// value round-trip to the server as a raw error.
+function intFieldError(valueType, displayValue) {
+  if (valueType !== 'INT') return null;
+  if (!/^\d+$/.test(String(displayValue).trim())) {
+    return 'Must be a whole number (0 or greater).';
+  }
+  return null;
+}
+
 export default function OrgConfigAdmin() {
   const [rows, setRows] = useState([]);
   const [drafts, setDrafts] = useState({});
   const [savingKey, setSavingKey] = useState(null);
+  const [error, setError] = useState(null);
 
-  const load = () => listConfig().then((res) => setRows(res.data));
+  const load = () => {
+    setError(null);
+    listConfig().then((res) => setRows(res.data)).catch((err) => setError(err.message));
+  };
   useEffect(() => { load(); }, []);
 
   const save = async (key, valueType) => {
@@ -51,46 +66,54 @@ export default function OrgConfigAdmin() {
 
   return (
     <GlassCard>
-      <h3 className="font-display font-bold text-slate-100 mb-1 flex items-center gap-2">
+      <h3 className="font-display font-bold text-ink-100 mb-1 flex items-center gap-2">
         <Settings2 className="w-4 h-4 text-aurora-violet" /> Organisation configuration
       </h3>
-      <p className="text-xs text-slate-500 mb-5">Every value here is read at runtime — nothing on this screen is a code constant.</p>
+      <p className="text-xs text-ink-500 mb-5">Every value here is read at runtime — nothing on this screen is a code constant.</p>
 
-      <div className="space-y-3">
-        {rows.map((row) => {
-          const meta = FIELD_META[row.config_key] || { label: row.config_key };
-          const displayStored = toDisplayValue(row.config_key, row.config_value);
-          const draftValue = drafts[row.config_key] ?? displayStored;
-          const dirty = draftValue !== displayStored;
+      {error ? (
+        <EmptyState icon={AlertTriangle} title="Couldn't load configuration" description={error} />
+      ) : (
+        <div className="space-y-3">
+          {rows.map((row) => {
+            const meta = FIELD_META[row.config_key] || { label: row.config_key };
+            const displayStored = toDisplayValue(row.config_key, row.config_value);
+            const draftValue = drafts[row.config_key] ?? displayStored;
+            const dirty = draftValue !== displayStored;
+            const fieldError = intFieldError(row.value_type, draftValue);
 
-          return (
-            <div key={row.config_key} className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start bg-white/[0.03] rounded-xl px-4 py-3">
-              <div className="sm:col-span-1">
-                <p className="text-sm font-medium text-slate-200">{meta.label}</p>
-                {meta.hint && <p className="text-xs text-slate-500 mt-0.5">{meta.hint}</p>}
+            return (
+              <div key={row.config_key} className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start bg-frost/[0.03] rounded-xl px-4 py-3">
+                <div className="sm:col-span-1">
+                  <p className="text-sm font-medium text-ink-200">{meta.label}</p>
+                  {meta.hint && <p className="text-xs text-ink-500 mt-0.5">{meta.hint}</p>}
+                </div>
+                <div className="sm:col-span-2">
+                  <div className="flex gap-2">
+                    {row.value_type === 'BOOL' ? (
+                      <select className="glass-input" value={draftValue}
+                        onChange={(e) => setDrafts((d) => ({ ...d, [row.config_key]: e.target.value }))}>
+                        <option value="true">ON</option>
+                        <option value="false">OFF</option>
+                      </select>
+                    ) : (
+                      <input className="glass-input" value={draftValue}
+                        placeholder={row.config_key === 'weekend.days' ? 'SAT,SUN' : undefined}
+                        onChange={(e) => setDrafts((d) => ({ ...d, [row.config_key]: e.target.value }))} />
+                    )}
+                    {dirty && (
+                      <PrimaryButton onClick={() => save(row.config_key, row.value_type)} disabled={savingKey === row.config_key || !!fieldError} className="!px-3 !py-2">
+                        <Save className="w-3.5 h-3.5" />
+                      </PrimaryButton>
+                    )}
+                  </div>
+                  {dirty && fieldError && <p className="text-xs font-semibold text-status-rejected mt-1.5">{fieldError}</p>}
+                </div>
               </div>
-              <div className="sm:col-span-2 flex gap-2">
-                {row.value_type === 'BOOL' ? (
-                  <select className="glass-input" value={draftValue}
-                    onChange={(e) => setDrafts((d) => ({ ...d, [row.config_key]: e.target.value }))}>
-                    <option value="true">ON</option>
-                    <option value="false">OFF</option>
-                  </select>
-                ) : (
-                  <input className="glass-input" value={draftValue}
-                    placeholder={row.config_key === 'weekend.days' ? 'SAT,SUN' : undefined}
-                    onChange={(e) => setDrafts((d) => ({ ...d, [row.config_key]: e.target.value }))} />
-                )}
-                {dirty && (
-                  <PrimaryButton onClick={() => save(row.config_key, row.value_type)} disabled={savingKey === row.config_key} className="!px-3 !py-2">
-                    <Save className="w-3.5 h-3.5" />
-                  </PrimaryButton>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </GlassCard>
   );
 }

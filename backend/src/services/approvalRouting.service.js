@@ -1,4 +1,5 @@
 const { Op } = require('sequelize');
+const { addDays, format } = require('date-fns');
 const {
   Employee, LeaveRequest, Delegation, SelfApprovalPermission, EmployeeRole, Role,
 } = require('../models');
@@ -37,9 +38,12 @@ async function getFirstStageApprover(employee, onDate = new Date()) {
 /**
  * BR-24: aggregate contiguous requests (zero deducted working days apart), Pending/Approved only,
  * to decide whether the long-leave (BR-23) or sick-leave (BR-43/44) threshold is crossed.
- * Sick-type days only aggregate with Sick-type days (BR-44).
+ * Sick-type days only aggregate with Sick-type days (BR-44). "Zero deducted working days apart"
+ * means the gap between two spans (a weekend, a holiday, or nothing at all) contains no day
+ * that would itself count as a deducted working day for this employee — not merely that the
+ * two date ranges overlap, which would miss e.g. two 5-day spans separated by a single weekend.
  */
-async function getContiguousAggregateDays(employeeId, leaveTypeId, candidateStart, candidateEnd, { sickOnly = false } = {}) {
+async function getContiguousAggregateDays(employeeId, leaveTypeId, candidateStart, candidateEnd, { sickOnly = false, leaveYearId = null } = {}) {
   const where = {
     employee_id: employeeId,
     state: { [Op.in]: ['PENDING_MANAGER', 'PENDING_HR', 'APPROVED'] },
@@ -47,21 +51,48 @@ async function getContiguousAggregateDays(employeeId, leaveTypeId, candidateStar
   if (sickOnly) where.leave_type_id = leaveTypeId; // only same (Sick) type aggregates for BR-44
 
   const candidates = await LeaveRequest.findAll({ where });
-  // Contiguity check kept simple/explicit here; a full implementation walks the calendar
-  // between requests counting only deducted working days, per BR-24's "zero deducted working
-  // days apart" definition — delegated to businessDay.service in the request lifecycle.
-  const overlappingOrAdjacent = candidates.filter((r) => {
-    return new Date(r.end_date) >= new Date(candidateStart) && new Date(r.start_date) <= new Date(candidateEnd);
-  });
+  const candStart = new Date(candidateStart);
+  const candEnd = new Date(candidateEnd);
+  // Lazy require: businessDayService doesn't depend on this module, but avoids a top-level
+  // require cycle risk if that ever changes.
+  const businessDayService = require('./businessDay.service');
 
-  const total = overlappingOrAdjacent.reduce((sum, r) => sum + parseFloat(r.deducted_days || 0), 0);
+  let total = 0;
+  for (const r of candidates) {
+    const rStart = new Date(r.start_date);
+    const rEnd = new Date(r.end_date);
+    const overlaps = rEnd >= candStart && rStart <= candEnd;
+
+    let isContiguous = overlaps;
+    if (!overlaps && leaveYearId) {
+      const gapStart = rEnd < candStart ? addDays(rEnd, 1) : addDays(candEnd, 1);
+      const gapEnd = rEnd < candStart ? addDays(candStart, -1) : addDays(rStart, -1);
+      if (gapStart > gapEnd) {
+        isContiguous = true; // the two spans are back-to-back with no day between them
+      } else {
+        const gapBreakdown = await businessDayService.computeDeductionBreakdown({
+          startDate: format(gapStart, 'yyyy-MM-dd'), endDate: format(gapEnd, 'yyyy-MM-dd'),
+          isHalfDay: false, leaveYearId, employeeId,
+        });
+        isContiguous = gapBreakdown.deductedWorkingDays === 0;
+      }
+    }
+
+    if (isContiguous) total += parseFloat(r.deducted_days || 0);
+  }
   return total;
 }
 
-/** BR-23: does this request (post-aggregation) require HR/Admin second-stage approval? */
+/**
+ * BR-23: does this request (post-aggregation) require HR/Admin second-stage approval?
+ * `aggregateDays` is the sum of OTHER contiguous requests (never includes this candidate's
+ * own days — see getContiguousAggregateDays), so the two must be added together to get the
+ * combined contiguous total; taking the max of the two would let two requests that are each
+ * individually under the threshold combine to exceed it without ever being detected.
+ */
 async function requiresLongLeaveSecondStage(deductedDays, aggregateDays) {
   const threshold = await configService.get('approval.long_leave_threshold_days');
-  return Math.max(deductedDays, aggregateDays) > threshold;
+  return (deductedDays + aggregateDays) > threshold;
 }
 
 /**
@@ -84,15 +115,22 @@ async function isEligibleForSelfApproval(employee, onDate = new Date()) {
   return !hasHigherAuthority;
 }
 
-/** BR-37 precondition check used at hierarchy-entry time (LMS-011), not at escalation time. */
-async function wouldCreateCircularHierarchy(employeeId, proposedManagerId) {
+/**
+ * BR-37 precondition check used at hierarchy-entry time (LMS-011), not at escalation time.
+ * Accepts an optional `{ transaction }` so callers that are wiring up a manager inside an
+ * active Sequelize transaction (e.g. bulkImport.service.js, which may have written earlier
+ * rows' reporting_manager_id in this same batch) get walk results that reflect those
+ * in-progress, not-yet-committed writes rather than only what's already been committed.
+ */
+async function wouldCreateCircularHierarchy(employeeId, proposedManagerId, options = {}) {
+  const { transaction } = options;
   let cursor = proposedManagerId;
   const seen = new Set();
   while (cursor) {
     if (String(cursor) === String(employeeId)) return true;
     if (seen.has(cursor)) return true; // defensive: pre-existing cycle
     seen.add(cursor);
-    const mgr = await Employee.findByPk(cursor);
+    const mgr = await Employee.findByPk(cursor, { transaction });
     cursor = mgr ? mgr.reporting_manager_id : null;
   }
   return false;

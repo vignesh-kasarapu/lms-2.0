@@ -71,6 +71,21 @@ async function listManagers() {
   return managers;
 }
 
+/** getFirstStageApprover picks a single active delegation for a nominator via a date-range
+ * lookup with no tie-break — two overlapping windows would make routing non-deterministic. */
+async function assertNoDelegationOverlap(nominatorId, fromDate, toDate) {
+  const existing = await Delegation.findAll({ where: { nominator_id: nominatorId, revoked_at: null } });
+  const newFrom = new Date(fromDate);
+  const newTo = new Date(toDate);
+  const overlaps = existing.some((d) => newFrom <= new Date(d.to_date) && newTo >= new Date(d.from_date));
+  if (overlaps) {
+    throw Object.assign(
+      new Error('This manager already has an active delegation covering part of this date range. Delegation windows may not overlap.'),
+      { status: 400, code: 'DELEGATION_OVERLAP' },
+    );
+  }
+}
+
 /** LMS-041: a Manager nominates a Delegate for a defined date range, from the eligible list only. */
 async function nominate({ nominatorId, delegateId, fromDate, toDate, setById, allowFallback = true }) {
   const candidates = allowFallback
@@ -83,6 +98,7 @@ async function nominate({ nominatorId, delegateId, fromDate, toDate, setById, al
       { status: 400, code: 'INELIGIBLE_DELEGATE' },
     );
   }
+  await assertNoDelegationOverlap(nominatorId, fromDate, toDate);
 
   const delegation = await Delegation.create({
     nominator_id: nominatorId, delegate_id: delegateId, set_by_id: setById, from_date: fromDate, to_date: toDate,
@@ -106,9 +122,18 @@ async function nominateOnBehalf({ supervisorId, nominatorId, delegateId, fromDat
   return nominate({ nominatorId, delegateId, fromDate, toDate, setById: supervisorId, allowFallback: !isHrAdmin });
 }
 
-async function revoke(delegationId, actorId) {
+async function revoke(delegationId, actorId, actorIsHrAdmin = false) {
   const delegation = await Delegation.findByPk(delegationId);
   if (!delegation) throw Object.assign(new Error('Delegation not found'), { status: 404 });
+
+  const isOwner = String(delegation.nominator_id) === String(actorId) || String(delegation.set_by_id) === String(actorId);
+  if (!isOwner && !actorIsHrAdmin) {
+    throw Object.assign(
+      new Error('You can only revoke a delegation you nominated or set on someone else\'s behalf.'),
+      { status: 403, code: 'NOT_OWNER' },
+    );
+  }
+
   delegation.revoked_at = new Date();
   await delegation.save();
   await auditService.record({ actorId, action: 'DELEGATION_REVOKED', entityType: 'delegations', entityId: delegationId });
@@ -125,8 +150,17 @@ async function listMine(employeeId) {
 
 /** Roles doc §2.6: "HR/Admin: R Org (optional visibility)" — every delegation, not just the caller's own. */
 async function listAll() {
+  // NOTE: Employee.full_name is a DataTypes.VIRTUAL getter with no declared field
+  // dependencies, so an include that asks for only ['full_name'] causes Sequelize
+  // to select zero real columns from the joined `users` row — the nested
+  // nominator/delegate association then comes back empty in the response. Asking
+  // for the underlying columns the getter reads (first_name/last_name/employee_code)
+  // forces Sequelize to actually select and populate them, so full_name resolves.
   return Delegation.findAll({
-    include: [{ model: Employee, as: 'nominator', attributes: ['full_name'] }, { model: Employee, as: 'delegate', attributes: ['full_name'] }],
+    include: [
+      { model: Employee, as: 'nominator', attributes: ['full_name', 'first_name', 'last_name', 'employee_code'] },
+      { model: Employee, as: 'delegate', attributes: ['full_name', 'first_name', 'last_name', 'employee_code'] },
+    ],
     order: [['from_date', 'DESC']],
   });
 }

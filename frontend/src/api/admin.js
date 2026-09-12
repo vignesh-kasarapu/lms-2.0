@@ -26,9 +26,10 @@ export const listSelfApprovalGrants = () => client.get('/admin/self-approval-per
 export const grantSelfApproval = (payload) => client.post('/admin/self-approval-permissions', payload);
 export const revokeSelfApproval = (grantId) => client.post(`/admin/self-approval-permissions/${grantId}/revoke`);
 
-export const listWorkingPatterns = () => client.get('/admin/working-patterns');
+export const listWorkingPatterns = (includeInactive = false) => client.get('/admin/working-patterns', { params: { includeInactive } });
 export const createWorkingPattern = (payload) => client.post('/admin/working-patterns', payload);
 export const deactivateWorkingPattern = (id) => client.post(`/admin/working-patterns/${id}/deactivate`);
+export const reactivateWorkingPattern = (id) => client.post(`/admin/working-patterns/${id}/reactivate`);
 export const assignWorkingPattern = (payload) => client.post('/admin/working-pattern-assignments', payload);
 export const listWorkingPatternAssignments = () => client.get('/admin/working-pattern-assignments');
 export const updateWorkingPatternAssignment = (assignmentId, payload) =>

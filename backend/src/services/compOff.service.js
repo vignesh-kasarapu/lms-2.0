@@ -9,6 +9,21 @@ const notificationService = require('./notification.service');
  * work date it compensates for, not just an unexplained credit.
  */
 async function creditCompOff({ employeeId, workDate, hoursOrDays, approvedBy, notes }) {
+  const normalizedHoursOrDays = Number(hoursOrDays);
+  if (!Number.isFinite(normalizedHoursOrDays) || normalizedHoursOrDays <= 0) {
+    throw Object.assign(
+      new Error('hoursOrDays must be a positive number.'),
+      { status: 400, code: 'INVALID_HOURS_OR_DAYS' },
+    );
+  }
+  const parsedWorkDate = workDate ? new Date(workDate) : null;
+  if (!workDate || Number.isNaN(parsedWorkDate.getTime())) {
+    throw Object.assign(
+      new Error('workDate must be a valid date.'),
+      { status: 400, code: 'INVALID_WORK_DATE' },
+    );
+  }
+
   return sequelize.transaction(async (transaction) => {
     const compOffType = await LeaveType.findOne({ where: { type_code: 'COMP_OFF' }, transaction });
     if (!compOffType) {
@@ -16,25 +31,35 @@ async function creditCompOff({ employeeId, workDate, hoursOrDays, approvedBy, no
     }
     const leaveYear = await LeaveYear.findOne({ where: { is_current: true }, transaction });
 
+    const existing = await CompensatoryOffCredit.findOne({
+      where: { employee_id: employeeId, work_date: workDate }, transaction,
+    });
+    if (existing) {
+      throw Object.assign(
+        new Error('A comp-off credit already exists for this employee on this work date.'),
+        { status: 400, code: 'DUPLICATE_COMP_OFF' },
+      );
+    }
+
     const ledgerEntry = await LeaveLedger.create({
       employee_id: employeeId, leave_type_id: compOffType.leave_type_id, leave_year_id: leaveYear.leave_year_id,
-      entry_type: 'MANUAL_ADJUSTMENT', quantity: Math.abs(hoursOrDays),
+      entry_type: 'MANUAL_ADJUSTMENT', quantity: normalizedHoursOrDays,
       source_reference: `comp_off:${workDate}`, actor_id: approvedBy,
       reason: notes || `Compensatory off for work on ${workDate}`,
     }, { transaction });
 
     const credit = await CompensatoryOffCredit.create({
-      employee_id: employeeId, work_date: workDate, hours_or_days: hoursOrDays,
+      employee_id: employeeId, work_date: workDate, hours_or_days: normalizedHoursOrDays,
       ledger_entry_id: ledgerEntry.entry_id, approved_by: approvedBy, notes,
     }, { transaction });
 
     await auditService.record({
       actorId: approvedBy, action: 'COMP_OFF_CREDITED', entityType: 'compensatory_off_credits',
-      entityId: credit.comp_off_id, newValue: { employeeId, workDate, hoursOrDays }, transaction,
+      entityId: credit.comp_off_id, newValue: { employeeId, workDate, hoursOrDays: normalizedHoursOrDays }, transaction,
     });
 
     await notificationService.notify({
-      recipientId: employeeId, templateKey: 'COMP_OFF_CREDITED', tokens: { hoursOrDays, workDate }, transaction,
+      recipientId: employeeId, templateKey: 'COMP_OFF_CREDITED', tokens: { hoursOrDays: normalizedHoursOrDays, workDate }, transaction,
     }).catch(() => {});
 
     return credit;

@@ -64,7 +64,7 @@ async function allEntries(req, res) {
     if (dateTo) where.created_at[Op.lte] = new Date(`${dateTo}T23:59:59.999Z`);
   }
 
-  const limit = Math.min(parseInt(pageSize, 10) || 50, 200);
+  const limit = Math.min(Math.max(parseInt(pageSize, 10) || 50, 1), 200);
   const currentPage = Math.max(parseInt(page, 10) || 1, 1);
   const offset = (currentPage - 1) * limit;
 

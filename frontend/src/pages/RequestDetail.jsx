@@ -18,23 +18,32 @@ export default function RequestDetail() {
   const [candidates, setCandidates] = useState([]);
   const [picked, setPicked] = useState('');
   const [adding, setAdding] = useState(false);
+  const [watcherError, setWatcherError] = useState(null);
 
   const load = () => getRequestDetail(requestId).then((res) => setRequest(res.data)).finally(() => setLoading(false));
   useEffect(() => { load(); }, [requestId]);
   useEffect(() => {
-    if (hasRole('MANAGER', 'HR_ADMIN')) getWatchableEmployees().then((res) => setCandidates(res.data));
+    if (hasRole('MANAGER', 'HR_ADMIN')) getWatchableEmployees().then((res) => setCandidates(res.data)).catch((err) => setWatcherError(err.message));
   }, []);
 
   const submitWatcher = async () => {
     if (!picked) return;
     setAdding(true);
+    setWatcherError(null);
     try {
       await addWatcher(requestId, picked);
       setPicked('');
       load();
+    } catch (err) {
+      setWatcherError(err.message);
     } finally {
       setAdding(false);
     }
+  };
+
+  const removeWatcherClick = (watcherId) => {
+    setWatcherError(null);
+    removeWatcher(requestId, watcherId).then(load).catch((err) => setWatcherError(err.message));
   };
 
   if (loading) return <><Topbar title="Request detail" /><div className="h-64 glass-panel animate-pulse" /></>;
@@ -48,10 +57,10 @@ export default function RequestDetail() {
           <GlassCard>
             <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-lg font-display font-bold text-slate-100">
+                <p className="text-lg font-display font-bold text-ink-100">
                   {request.start_date} → {request.end_date}
                 </p>
-                <p className="text-sm text-slate-500 mt-0.5">
+                <p className="text-sm text-ink-500 mt-0.5">
                   {request.LeaveType?.type_name} · {request.deducted_days} day(s)
                   {request.is_half_day && ` · ${request.half_day_portion?.toLowerCase()} half`}
                 </p>
@@ -66,16 +75,22 @@ export default function RequestDetail() {
               </div>
             )}
 
-            <p className="text-xs font-medium text-slate-500 mb-1.5">Reason</p>
-            <p className="text-sm text-slate-300 bg-white/[0.03] rounded-xl px-4 py-3">{request.reason}</p>
+            {request.reason && (
+              <>
+                <p className="text-xs font-medium text-ink-500 mb-1.5">Reason</p>
+                <p className="text-sm text-ink-300 bg-frost/[0.03] rounded-xl px-4 py-3">{request.reason}</p>
+              </>
+            )}
           </GlassCard>
 
           <GlassCard>
-            <h3 className="font-display font-bold text-slate-100 mb-4 flex items-center gap-2">
+            <h3 className="font-display font-bold text-ink-100 mb-4 flex items-center gap-2">
               <Clock className="w-4 h-4 text-aurora-cyan" /> Approval timeline
             </h3>
-            {!request.approvals?.length ? (
-              <p className="text-sm text-slate-500">No decisions recorded yet.</p>
+            {request.scope === 'WATCHER_MASKED' && !request.approvals ? (
+              <p className="text-sm text-ink-500">Approval details are not shown in this limited view.</p>
+            ) : !request.approvals?.length ? (
+              <p className="text-sm text-ink-500">No decisions recorded yet.</p>
             ) : (
               <div className="space-y-3">
                 {request.approvals.map((a) => (
@@ -86,12 +101,12 @@ export default function RequestDetail() {
                       <XCircle className="w-4 h-4 text-status-rejected mt-0.5 shrink-0" />
                     )}
                     <div className="text-sm">
-                      <p className="text-slate-200">
+                      <p className="text-ink-200">
                         <span className="font-medium">{a.stage}</span> · {a.decision === 'APPROVE' ? 'Approved' : 'Rejected'}
                         {a.on_behalf_of_id && ' (as delegate)'}
                       </p>
-                      {a.reason && <p className="text-slate-500 text-xs mt-0.5">{a.reason}</p>}
-                      <p className="text-slate-600 text-xs mt-0.5">{new Date(a.decision_timestamp).toLocaleString()}</p>
+                      {a.reason && <p className="text-ink-500 text-xs mt-0.5">{a.reason}</p>}
+                      <p className="text-ink-600 text-xs mt-0.5">{new Date(a.decision_timestamp).toLocaleString()}</p>
                     </div>
                   </div>
                 ))}
@@ -102,18 +117,18 @@ export default function RequestDetail() {
 
         <div className="space-y-4">
           <GlassCard>
-            <h3 className="font-display font-bold text-slate-100 mb-3 flex items-center gap-2 text-sm">
+            <h3 className="font-display font-bold text-ink-100 mb-3 flex items-center gap-2 text-sm">
               <Eye className="w-4 h-4 text-aurora-violet" /> Watchers
             </h3>
             {!request.watchers?.length ? (
-              <p className="text-xs text-slate-500 mb-3">No watchers on this request.</p>
+              <p className="text-xs text-ink-500 mb-3">No watchers on this request.</p>
             ) : (
               <div className="space-y-2 mb-3">
                 {request.watchers.map((w) => (
-                  <div key={w.watcher_id} className="flex items-center justify-between text-sm text-slate-300 bg-white/[0.03] rounded-lg px-3 py-2">
+                  <div key={w.watcher_id} className="flex items-center justify-between text-sm text-ink-300 bg-frost/[0.03] rounded-lg px-3 py-2">
                     <span>{w.watcherEmployee?.full_name || `Employee #${w.watcher_employee_id}`}</span>
                     {hasRole('MANAGER', 'HR_ADMIN') && (
-                      <button onClick={() => removeWatcher(requestId, w.watcher_id).then(load)} className="text-slate-500 hover:text-status-rejected transition-colors">
+                      <button onClick={() => removeWatcherClick(w.watcher_id)} className="text-ink-500 hover:text-status-rejected transition-colors">
                         <X className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -123,7 +138,7 @@ export default function RequestDetail() {
             )}
 
             {hasRole('MANAGER', 'HR_ADMIN') && candidates.length > 0 && (
-              <div className="flex gap-2 pt-2 border-t border-white/5">
+              <div className="flex gap-2 pt-2 border-t border-frost/5">
                 <select className="glass-input !py-2 text-xs" value={picked} onChange={(e) => setPicked(e.target.value)}>
                   <option value="">Add a watcher…</option>
                   {candidates
@@ -135,22 +150,23 @@ export default function RequestDetail() {
                 </PrimaryButton>
               </div>
             )}
+            {watcherError && <p className="text-xs text-status-rejected mt-2">{watcherError}</p>}
           </GlassCard>
 
           {request.LeaveType?.permits_attachments && (
             <GlassCard>
-              <h3 className="font-display font-bold text-slate-100 mb-3 flex items-center gap-2 text-sm">
+              <h3 className="font-display font-bold text-ink-100 mb-3 flex items-center gap-2 text-sm">
                 <Paperclip className="w-4 h-4 text-aurora-violet" /> Attachments
               </h3>
               {!request.attachments?.length ? (
-                <p className="text-xs text-slate-500">No attachments uploaded.</p>
+                <p className="text-xs text-ink-500">No attachments uploaded.</p>
               ) : (
                 <div className="space-y-2">
                   {request.attachments.map((a) => (
                     <a key={a.attachment_id} href={attachmentDownloadUrl(a.attachment_id)} target="_blank" rel="noreferrer"
-                      className="flex items-center justify-between text-sm bg-white/[0.03] rounded-lg px-3 py-2 hover:bg-white/[0.06] transition-colors">
-                      <span className="text-slate-200 truncate">{a.file_name}</span>
-                      <span className="text-xs text-slate-500 shrink-0 ml-2">{(a.size_bytes / 1024).toFixed(0)} KB</span>
+                      className="flex items-center justify-between text-sm bg-frost/[0.03] rounded-lg px-3 py-2 hover:bg-frost/[0.06] transition-colors">
+                      <span className="text-ink-200 truncate">{a.file_name}</span>
+                      <span className="text-xs text-ink-500 shrink-0 ml-2">{(a.size_bytes / 1024).toFixed(0)} KB</span>
                     </a>
                   ))}
                 </div>

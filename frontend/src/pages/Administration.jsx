@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import EmployeeAdmin from '../components/admin/EmployeeAdmin';
 import LeaveTypeAdmin from '../components/admin/LeaveTypeAdmin';
 import HolidayAdmin from '../components/admin/HolidayAdmin';
@@ -18,6 +18,7 @@ import { getDashboard } from '../api/employees';
 export default function Administration() {
   const [leaveYearId, setLeaveYearId] = useState(null);
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const activeSection = searchParams.get('section') || 'employees';
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export default function Administration() {
     'working-patterns': { label: 'Working patterns', content: <WorkingPatternAdmin /> },
     templates: { label: 'Notification templates', content: <NotificationTemplateAdmin /> },
     capacity: { label: 'Blackout & capacity', content: <CapacityAdmin /> },
-    'balance-extras': { label: 'Encashment & comp-off', content: <BalanceExtrasAdmin /> },
+    'balance-extras': { label: 'Encashment & comp-off', content: <BalanceExtrasAdmin leaveYearId={leaveYearId} /> },
     'balance-adjustment': { label: 'Balance adjustment', content: <BalanceAdjustmentAdmin /> },
     reports: { label: 'Reports', content: <ReportsAdmin /> },
     audit: { label: 'Audit log', content: <AuditLogAdmin /> },
@@ -46,17 +47,37 @@ export default function Administration() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
+      <div className="flex items-center justify-between gap-4 border-b border-frost/10 pb-5">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-400">Administration</p>
-          <h1 className="mt-1 text-2xl font-display font-extrabold tracking-tight text-white">{active.label}</h1>
+          <h1 className="mt-1 text-2xl font-display font-extrabold tracking-tight text-ink-50">{active.label}</h1>
         </div>
         <div className="hidden rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold text-amber-200 sm:block">
           HR Admin workspace
         </div>
       </div>
 
-      <main className="min-w-0 rounded-3xl border border-white/10 bg-white/[0.025] p-4 shadow-2xl shadow-slate-950/20 sm:p-6">
+      {/* Mobile-only section switcher: the sidebar's admin submenu (desktop-only)
+          is the only other way to change sections, so this chip bar is what makes
+          every section reachable without reopening the mobile nav each time. */}
+      <div className="md:hidden -mx-1 flex gap-2 overflow-x-auto pb-1 px-1">
+        {Object.entries(sections).map(([key, section]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => navigate(`/administration?section=${key}`)}
+            className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition-colors ${
+              activeSection === key
+                ? 'bg-amber-400/20 text-amber-200 border border-amber-400/40'
+                : 'bg-frost/[0.05] text-ink-300 border border-frost/10'
+            }`}
+          >
+            {section.label}
+          </button>
+        ))}
+      </div>
+
+      <main className="min-w-0 rounded-3xl border border-frost/10 bg-frost/[0.025] p-4 shadow-2xl shadow-ink-950/20 sm:p-6">
         {active.content}
       </main>
     </div>

@@ -27,6 +27,13 @@ function redirectToEntra(req, res) {
   return res.redirect(authorizeUrl);
 }
 
+/** Every failure path below must land the user back on the SPA's login screen with a
+ * readable reason, never a raw JSON error body served from the backend's own origin —
+ * the login page has nothing to read a thrown error from, since it's not an XHR call. */
+function redirectToLoginWithError(res, message) {
+  return res.redirect(`${env.clientBaseUrl}/login?error=${encodeURIComponent(message)}`);
+}
+
 /** LMS-002/003: exchange code, verify claims, resolve employee, issue our own session. */
 async function handleCallback(req, res) {
   const { code, state, error: entraError, error_description: entraErrorDescription } = req.query;
@@ -34,29 +41,25 @@ async function handleCallback(req, res) {
   res.clearCookie(STATE_COOKIE_NAME);
 
   if (entraError) {
-    const err = new Error(entraErrorDescription || 'Microsoft Entra sign-in failed.');
-    err.status = 401;
-    err.code = 'ENTRA_SIGN_IN_ERROR';
-    throw err;
+    return redirectToLoginWithError(res, entraErrorDescription || 'Microsoft Entra sign-in failed.');
   }
 
   if (!code) {
-    const err = new Error('Missing authorization code from Entra callback.');
-    err.status = 400;
-    err.code = 'MISSING_AUTH_CODE';
-    throw err;
+    return redirectToLoginWithError(res, 'Missing authorization code from Entra callback.');
   }
 
   if (!state || !expectedState || state !== expectedState) {
-    const err = new Error('Invalid or expired sign-in state. Please try signing in again.');
-    err.status = 401;
-    err.code = 'INVALID_OAUTH_STATE';
-    throw err;
+    return redirectToLoginWithError(res, 'Invalid or expired sign-in state. Please try signing in again.');
   }
 
-  const idToken = await authService.exchangeCodeForIdToken(code);
-  const claims = await authService.verifyEntraIdToken(idToken);
-  const employee = await authService.resolveEmployeeFromEntraClaims(claims);
+  let employee;
+  try {
+    const idToken = await authService.exchangeCodeForIdToken(code);
+    const claims = await authService.verifyEntraIdToken(idToken);
+    employee = await authService.resolveEmployeeFromEntraClaims(claims);
+  } catch (err) {
+    return redirectToLoginWithError(res, err.message || 'Sign-in failed. Please try again.');
+  }
 
   const sessionToken = authService.issueSessionToken(employee.employee_id);
   res.cookie(env.session.cookieName, sessionToken, { httpOnly: true, secure: env.nodeEnv === 'production', sameSite: 'lax' });

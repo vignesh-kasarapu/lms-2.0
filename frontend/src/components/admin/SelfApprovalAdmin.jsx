@@ -13,8 +13,8 @@ export default function SelfApprovalAdmin() {
   const [error, setError] = useState(null);
 
   const load = () => {
-    listSelfApprovalGrants().then((res) => setGrants(res.data));
-    listEmployees().then((res) => setEmployees(res.data));
+    listSelfApprovalGrants().then((res) => setGrants(res.data)).catch((err) => setError(err.message));
+    listEmployees().then((res) => setEmployees(res.data)).catch((err) => setError(err.message));
   };
   useEffect(() => { load(); }, []);
 
@@ -36,10 +36,10 @@ export default function SelfApprovalAdmin() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
       <GlassCard className="lg:col-span-2">
-        <h3 className="font-display font-bold text-slate-100 mb-1 flex items-center gap-2">
+        <h3 className="font-display font-bold text-ink-100 mb-1 flex items-center gap-2">
           <ShieldAlert className="w-4 h-4 text-status-advance" /> Grant self-approval
         </h3>
-        <p className="text-xs text-slate-500 mb-4">
+        <p className="text-xs text-ink-500 mb-4">
           Controlled addendum: only applies where the employee has no reporting manager on record.
           One active grant per employee at a time.
         </p>
@@ -60,20 +60,20 @@ export default function SelfApprovalAdmin() {
       </GlassCard>
 
       <GlassCard className="lg:col-span-3">
-        <h3 className="font-display font-bold text-slate-100 mb-4">Grants</h3>
-        <div className="divide-y divide-white/5">
+        <h3 className="font-display font-bold text-ink-100 mb-4">Grants</h3>
+        <div className="divide-y divide-frost/5">
           {grants.map((g) => (
             <div key={g.self_approval_permission_id} className="py-3 flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-100">{g.grantee?.full_name}</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-sm text-ink-100">{g.grantee?.full_name}</p>
+                <p className="text-xs text-ink-500">
                   {g.effective_from} → {g.effective_to || 'open-ended'} · granted by {g.grantedBy?.full_name}
                 </p>
               </div>
               {g.is_active ? (
-                <GhostButton onClick={() => revokeSelfApproval(g.self_approval_permission_id).then(load)} className="!px-3 !py-1.5 text-xs">Revoke</GhostButton>
+                <GhostButton onClick={() => revokeSelfApproval(g.self_approval_permission_id).then(load).catch((err) => setError(err.message))} className="!px-3 !py-1.5 text-xs">Revoke</GhostButton>
               ) : (
-                <span className="text-xs text-slate-500">Revoked</span>
+                <span className="text-xs text-ink-500">Revoked</span>
               )}
             </div>
           ))}

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import AppLayout from './components/layout/AppLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -13,10 +14,21 @@ import HolidayCalendar from './pages/HolidayCalendar';
 import Delegation from './pages/Delegation';
 import Administration from './pages/Administration';
 
+/** A plain 401 (no session yet) is the routine state for a first-time visitor — not
+ * worth alarming them with. Anything else (a genuine server/network failure on the
+ * initial /employees/me call) is worth explaining rather than just silently bouncing
+ * to a blank login screen. */
+function loginRedirectPath(error) {
+  if (error && error.status !== 401) {
+    return `/login?error=${encodeURIComponent(error.message || 'Something went wrong loading your session. Please sign in again.')}`;
+  }
+  return '/login';
+}
+
 function Protected({ children, roles }) {
-  const { user, loading, hasRole } = useAuth();
+  const { user, loading, error, hasRole } = useAuth();
   if (loading) return <FullScreenLoader />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to={loginRedirectPath(error)} replace />;
   if (roles && !hasRole(...roles)) return <Navigate to="/" replace />;
   return children;
 }
@@ -30,32 +42,34 @@ function FullScreenLoader() {
 }
 
 function Shell() {
-  const { user, loading } = useAuth();
+  const { user, loading, error } = useAuth();
   if (loading) return <FullScreenLoader />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to={loginRedirectPath(error)} replace />;
   return <AppLayout />;
 }
 
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route element={<Shell />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/apply" element={<ApplyLeave />} />
-            <Route path="/my-requests" element={<MyRequests />} />
-            <Route path="/my-requests/:requestId" element={<RequestDetail />} />
-            <Route path="/team-calendar" element={<TeamCalendar />} />
-            <Route path="/holidays" element={<HolidayCalendar />} />
-            <Route path="/approvals" element={<Protected roles={['MANAGER', 'HR_ADMIN']}><Approvals /></Protected>} />
-            <Route path="/my-team" element={<Protected roles={['MANAGER', 'HR_ADMIN']}><MyTeam /></Protected>} />
-            <Route path="/delegation" element={<Protected roles={['MANAGER', 'HR_ADMIN']}><Delegation /></Protected>} />
-            <Route path="/administration" element={<Protected roles={['HR_ADMIN']}><Administration /></Protected>} />
-          </Route>
-        </Routes>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route element={<Shell />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/apply" element={<ApplyLeave />} />
+              <Route path="/my-requests" element={<MyRequests />} />
+              <Route path="/my-requests/:requestId" element={<RequestDetail />} />
+              <Route path="/team-calendar" element={<TeamCalendar />} />
+              <Route path="/holidays" element={<HolidayCalendar />} />
+              <Route path="/approvals" element={<Protected roles={['MANAGER', 'HR_ADMIN']}><Approvals /></Protected>} />
+              <Route path="/my-team" element={<Protected roles={['MANAGER', 'HR_ADMIN']}><MyTeam /></Protected>} />
+              <Route path="/delegation" element={<Protected roles={['MANAGER', 'HR_ADMIN']}><Delegation /></Protected>} />
+              <Route path="/administration" element={<Protected roles={['HR_ADMIN']}><Administration /></Protected>} />
+            </Route>
+          </Routes>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

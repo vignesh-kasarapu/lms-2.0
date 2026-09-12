@@ -1,4 +1,4 @@
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, AlertTriangle } from 'lucide-react';
 
 function MicrosoftLogo() {
   // Real four-color Microsoft logo, not a stand-in glyph.
@@ -24,7 +24,7 @@ function LMSLogo() {
   );
 }
 
-export default function LoginCard() {
+export default function LoginCard({ signInError }) {
   return (
     <div className="relative w-full max-w-[440px] mx-auto">
       {/* ambient glow behind the card: purple left, cyan right */}
@@ -54,6 +54,16 @@ export default function LoginCard() {
         <p className="text-[14px] text-premium-textMuted mt-2">Leave Management System</p>
 
         <div className="h-px my-7" style={{ background: 'rgba(255,255,255,0.10)' }} />
+
+        {signInError && (
+          <div
+            className="flex items-start gap-2.5 text-left text-sm mb-6 px-4 py-3 rounded-2xl"
+            style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#FCA5A5' }}
+          >
+            <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+            <span>{signInError}</span>
+          </div>
+        )}
 
         <p className="font-display font-semibold" style={{ fontSize: '25px', color: '#A78BFA' }}>Welcome!</p>
         <p className="text-[14px] text-premium-textMuted mt-2 mb-8 leading-relaxed">

@@ -1,9 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, PlaneTakeoff, ShieldCheck, ListChecks } from 'lucide-react';
+import { LayoutDashboard, PlaneTakeoff, ShieldCheck, ListChecks, Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-// Mobile bottom bar: four highest-frequency destinations for the role (FRD 7.2).
-export default function BottomNav() {
+// Mobile bottom bar: highest-frequency destinations for the role (FRD 7.2),
+// plus a "Menu" button opening the full nav drawer (Sidebar.jsx) so every
+// route — Team Calendar, Holidays, My Team, Delegations, Administration and
+// all of its sections — stays reachable on mobile, not just these shortcuts.
+export default function BottomNav({ onOpenMenu }) {
   const { hasRole } = useAuth();
   const isApprover = hasRole('MANAGER', 'HR_ADMIN');
 
@@ -30,7 +33,7 @@ export default function BottomNav() {
             end={to === '/'}
             className={({ isActive }) =>
               `flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-medium ${
-                isActive ? 'text-aurora-violet' : 'text-slate-500'
+                isActive ? 'text-aurora-violet' : 'text-ink-500'
               }`
             }
           >
@@ -38,6 +41,14 @@ export default function BottomNav() {
             {label}
           </NavLink>
         ))}
+        <button
+          type="button"
+          onClick={onOpenMenu}
+          className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-medium text-ink-500"
+        >
+          <Menu className="w-5 h-5" strokeWidth={1.75} />
+          Menu
+        </button>
       </div>
     </nav>
   );

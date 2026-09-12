@@ -9,7 +9,7 @@ export default function RoleAssignment({ employeeId }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const load = () => getEmployeeRoles(employeeId).then((res) => { setRoles(res.data); setError(null); });
+  const load = () => getEmployeeRoles(employeeId).then((res) => { setRoles(res.data); setError(null); }).catch((err) => setError(err.message));
   useEffect(() => { load(); }, [employeeId]);
 
   const toggle = async (roleCode) => {
@@ -31,13 +31,13 @@ export default function RoleAssignment({ employeeId }) {
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <ShieldCheck className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+      <ShieldCheck className="w-3.5 h-3.5 text-ink-500 shrink-0" />
       {ASSIGNABLE_ROLES.map((roleCode) => (
         <button key={roleCode} onClick={() => toggle(roleCode)} disabled={saving}
           className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
             roles.includes(roleCode)
-              ? 'bg-aurora-violet/15 border-aurora-violet/50 text-white'
-              : 'bg-white/[0.03] border-white/10 text-slate-500 hover:text-slate-300'
+              ? 'bg-aurora-violet/15 border-aurora-violet/50 text-ink-50'
+              : 'bg-frost/[0.03] border-frost/10 text-ink-500 hover:text-ink-300'
           }`}>
           {roleCode === 'HR_ADMIN' ? 'HR/Admin' : 'Manager'}
         </button>

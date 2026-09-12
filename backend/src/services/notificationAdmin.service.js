@@ -1,6 +1,21 @@
 const { NotificationTemplate, NotificationDigestPreference } = require('../models');
 const auditService = require('./audit.service');
 
+/** Every template_key referenced directly (as a literal or a fixed set of literals) by
+ * business logic — deleting one of these leaves the referencing code with nothing to look
+ * up, and notification.service.js's notify() throws loudly for a missing key (as opposed to
+ * a disabled one, which it silently no-ops for). Disabling one of these is still fully
+ * supported; only hard deletion is blocked here. */
+const PROTECTED_TEMPLATE_KEYS = new Set([
+  'BALANCE_ADJUSTED', 'CARRY_FORWARD_APPLIED', 'SLA_REMINDER', 'ESCALATION_NOTICE_TO_PRIOR_APPROVER',
+  'NEW_REQUEST_AWAITING_DECISION', 'LOSS_OF_PAY_APPLIED', 'COMP_OFF_CREDITED', 'DELEGATE_ASSIGNED_TO_YOU',
+  'EMPLOYEE_ONBOARDING_INVITE', 'MANAGER_REASSIGNED', 'LEAVE_ENCASHMENT_POSTED', 'REQUEST_AWAITING_DECISION',
+  'EXTENDED_SICK_LEAVE_ALERT', 'REQUEST_SUBMITTED_CONFIRMATION', 'LONG_LEAVE_SUPERVISOR_NOTICE',
+  'REQUEST_APPROVED', 'REQUEST_REJECTED', 'CANCELLATION_REQUEST_AWAITING_DECISION', 'CANCELLATION_APPROVED',
+  'CANCELLATION_REJECTED', 'SELF_APPROVAL_GRANTED', 'WATCHED_REQUEST_SUBMITTED', 'WATCHED_REQUEST_APPROVED',
+  'WATCHED_REQUEST_REJECTED', 'WATCHED_REQUEST_CANCELLED',
+]);
+
 /** LMS-071: HR/Admin edits notification templates through the administration interface. */
 async function listTemplates() { return NotificationTemplate.findAll({ order: [['template_key', 'ASC']] }); }
 
@@ -27,6 +42,12 @@ async function setTemplateActive(templateKey, isActive, actorId) {
 async function deleteTemplate(templateKey, actorId) {
   const template = await NotificationTemplate.findByPk(templateKey);
   if (!template) throw Object.assign(new Error('Template not found'), { status: 404 });
+  if (PROTECTED_TEMPLATE_KEYS.has(templateKey)) {
+    throw Object.assign(
+      new Error(`"${templateKey}" is used directly by the application and cannot be deleted — disable it instead if you don't want it sent.`),
+      { status: 400, code: 'TEMPLATE_IN_USE' },
+    );
+  }
   await template.destroy();
   await auditService.record({ actorId, action: 'NOTIFICATION_TEMPLATE_DELETED', entityType: 'notification_templates', entityId: templateKey, priorValue: { subject_template: template.subject_template } });
   return { deleted: true };

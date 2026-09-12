@@ -8,7 +8,20 @@ async function listBlackoutPeriods({ includeInactive = false } = {}) {
   return BlackoutPeriod.findAll({ where: includeInactive ? {} : { is_active: true }, order: [['start_date', 'ASC']] });
 }
 
+/** LMS-085 follow-up: an inverted range (end before start) would silently create a
+ * blackout period that can never match assertNoBlackoutConflict's query — the admin
+ * thinks a blackout is configured but it blocks nothing. Reject it outright. */
+function assertValidDateRange(startDate, endDate) {
+  if (startDate && endDate && endDate < startDate) {
+    throw Object.assign(
+      new Error('End date cannot be before start date.'),
+      { status: 400, code: 'INVALID_DATE_RANGE' },
+    );
+  }
+}
+
 async function createBlackoutPeriod({ name, startDate, endDate, leaveTypeId }, actorId) {
+  assertValidDateRange(startDate, endDate);
   const period = await BlackoutPeriod.create({
     name, start_date: startDate, end_date: endDate, leave_type_id: leaveTypeId || null, created_by: actorId,
   });
@@ -20,6 +33,8 @@ async function updateBlackoutPeriod(blackoutId, { name, startDate, endDate, leav
   const period = await BlackoutPeriod.findByPk(blackoutId);
   if (!period) throw Object.assign(new Error('Blackout period not found'), { status: 404, code: 'NOT_FOUND' });
   const prior = { name: period.name, start_date: period.start_date, end_date: period.end_date, leave_type_id: period.leave_type_id };
+
+  assertValidDateRange(startDate ?? period.start_date, endDate ?? period.end_date);
 
   period.name = name ?? period.name;
   period.start_date = startDate ?? period.start_date;

@@ -32,7 +32,12 @@ async function auditLog(req, res) {
 
   const rows = await AuditLog.findAll({
     where,
-    include: [{ model: Employee, as: 'actor', attributes: ['full_name'] }],
+    // NOTE: Employee.full_name is a DataTypes.VIRTUAL getter with no declared field
+    // dependencies, so asking the include for only ['full_name'] makes Sequelize
+    // select zero real columns from the joined `users` row — the association then
+    // comes back empty (no `actor` key at all) in the live response. Requesting the
+    // underlying columns the getter reads forces them to be selected so it resolves.
+    include: [{ model: Employee, as: 'actor', attributes: ['full_name', 'first_name', 'last_name', 'employee_code'] }],
     order: [['timestamp', 'DESC']],
     limit: 200,
   });

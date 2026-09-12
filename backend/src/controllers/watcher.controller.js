@@ -2,7 +2,9 @@ const watcherService = require('../services/watcher.service');
 const { ok, created } = require('../utils/apiResponse');
 
 async function listStanding(req, res) {
-  const rows = await watcherService.listStandingWatchers(req.params.employeeId);
+  const rows = await watcherService.listStandingWatchers(
+    req.params.employeeId, req.currentUser.employeeId, req.currentUser.roles.includes('HR_ADMIN'),
+  );
   return ok(res, rows);
 }
 

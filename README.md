@@ -5,6 +5,134 @@ Built from `LMS_2_0.pdf` (FRD v2.0) and the 37-table ER design
 rules — every `[CONFIG]` value in the FRD lives in `organization_configs` and is
 read through `services/config.service.js`.
 
+## Quick start
+
+### 1. Run the project
+
+Prerequisites: Node.js 20+, a MySQL 8 instance (local, or let Docker run one
+for you — see [Docker](#docker), below).
+
+```bash
+# Backend
+cd backend
+cp .env.example .env   # fill in DB credentials at minimum
+npm install
+
+# Frontend
+cd ../frontend
+npm install
+```
+
+Then pick one of:
+
+- **Single command (recommended for local dev)** — from the repo root:
+  ```bash
+  npm run install:all   # one-time; installs backend/ and frontend/ deps together
+  npm run dev             # runs backend (nodemon :4000) + frontend (vite :5173) together
+  ```
+- **Two terminals**: `npm run dev` in `backend/`, and `npm run dev` in `frontend/` (http://localhost:5173, proxies `/api` to :4000).
+- **Docker** — see [Docker](#docker) below; runs MySQL + backend + frontend together with no local Node/MySQL install needed.
+
+### 2. New organization — first admin login, then add employees
+
+Every request that reaches the API is checked against a real `employees` row
+(`requireAuth` in `middleware/auth.middleware.js`) — there's no self-registration
+form, so on a brand-new, empty database **nobody** can sign in yet, including
+HR. Bootstrap it once, then everything else goes through the UI:
+
+```bash
+cd backend
+npm run seed   # master data only: roles, leave types, current leave year, org configs, notification templates
+
+# Creates (or, if re-run, just confirms) the first HR/Admin employee record.
+BOOTSTRAP_ADMIN_EMAIL="you@yourorg.com" \
+BOOTSTRAP_ADMIN_CODE="EMP001" \
+BOOTSTRAP_ADMIN_NAME="Your Name" \
+npm run bootstrap:admin
+```
+
+Then sign in as that person:
+- **Real deployment**: configure `ENTRA_*` in `backend/.env` and sign in through
+  Microsoft SSO at `/login` with the work email you just bootstrapped.
+- **Local/no-Entra testing**: set `DEV_AUTH_BYPASS_ENABLED=true` and
+  `DEV_AUTH_BYPASS_EMPLOYEE_CODE` to the employee code you bootstrapped
+  (`EMP001` above), restart the backend, and open the app — it signs you in as
+  that employee automatically, no Entra needed.
+
+Once signed in as HR/Admin, add the rest of the organization from
+**Administration → Employees** in the UI (each new hire is created via the same
+`onboardEmployee` flow the API exposes — no more direct-DB steps needed after
+this one bootstrap). Each newly-added employee gets an `EMPLOYEE_ONBOARDING_INVITE`
+notification + email (see [enabling onboarding email](#4-enabling-the-employee-onboarding-email)) and
+then signs in themselves the same way, via Entra SSO with their own work email.
+
+### 3. Running with seed data
+
+`npm run seed` (above) only creates configuration master data — no employees.
+For a populated demo/test org instead (useful for trying out the app or QA,
+**not** meant for a real organization), run:
+
+```bash
+cd backend
+npm run seed:demo
+```
+
+This creates a small demo org (an HR/Admin, three managers, and several
+employees across a full leave lifecycle — pending/approved/rejected requests,
+delegations, etc.) and prints sign-in codes for `DEV_AUTH_BYPASS_EMPLOYEE_CODE`
+(`EMP001` HR/Admin through `EMP010` Employee) at the end of its output. It's
+idempotent and self-verifying — safe to re-run, and it prints `[PASS]`/`[FAIL]`
+against its own checklist of business rules as it goes.
+
+### 4. Enabling the employee onboarding email
+
+Onboarding an employee (via the UI, or the bootstrap step above) always tries
+to send the `EMPLOYEE_ONBOARDING_INVITE` notification — the in-app copy always
+appears regardless, but the emailed copy only actually goes out once real SMTP
+credentials are set. In `backend/.env`:
+
+```bash
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=you@yourorg.com
+MAIL_PASSWORD=your_app_password   # Gmail: an App Password, not your account password
+```
+
+(Any basic-auth SMTP provider works, not just Gmail — `backend/src/utils/mailer.js`
+is the only file that talks to it.) With no credentials, or invalid ones, sending
+just fails quietly per employee: the in-app notification still appears, the
+onboarding action itself still succeeds, and the failure is recorded on that
+`Notification` row (`status: 'FAILED'`, with `error_message`) rather than
+surfacing as an error to HR — nothing else in the app depends on this
+succeeding (LMS-070).
+
+### 5. Deploying to a server
+
+The [Docker](#docker) setup below is the deployment unit — the same three
+containers (mysql, backend, frontend) run in production, just with real
+secrets and a domain in front of them instead of `localhost`.
+
+1. Provision a server (or VM) with Docker + the Compose plugin installed, and
+   clone the repo onto it.
+2. `cp .env.example .env` at the repo root and fill in **real** values:
+   `SESSION_JWT_SECRET` (long random string), `DB_PASSWORD`/`MYSQL_ROOT_PASSWORD`,
+   real `ENTRA_*` credentials, real `MAIL_*` credentials, `DEV_AUTH_BYPASS_ENABLED=false`,
+   and `APP_BASE_URL`/`CLIENT_BASE_URL`/`ENTRA_REDIRECT_URI` set to your real domain
+   (e.g. `https://leave.yourorg.com`) instead of `localhost`.
+3. `docker compose up -d --build` — brings up MySQL (schema created via
+   `sequelize.sync()` on first boot, since there are no migration files yet;
+   see the `NODE_ENV` note in the Docker section), then the backend, then the
+   frontend.
+4. Put a reverse proxy in front of the `frontend` container's port 80 to
+   terminate TLS on 443 for your domain (e.g. Caddy, nginx, or your cloud
+   provider's load balancer) — the app itself only needs to listen on 80/443
+   externally; MySQL and the backend's raw port don't need to be exposed to
+   the internet at all.
+5. Run the [bootstrap step](#2-new-organization--first-admin-login-then-add-employees)
+   once against this environment to create the first HR/Admin, same as local.
+6. Back up the `mysql_data` Docker volume on whatever schedule your org
+   requires — it's the only place data actually lives.
+
 ## Module hierarchy (build & read order)
 
 ```
@@ -390,3 +518,38 @@ npm run dev              # http://localhost:5173, proxies /api to :4000
 
 Nothing here is hardcoded around one deployment: change any `[CONFIG]` value
 through `/api/config`, not by editing code.
+
+### Single command (both servers together)
+
+From the repo root:
+
+```bash
+npm run install:all   # installs backend/ and frontend/ deps
+npm run dev            # runs backend (nodemon) + frontend (vite) concurrently
+```
+
+Requires `backend/.env` to already exist (see above) — this just orchestrates
+the same two dev servers, it doesn't change how either one runs.
+
+### Docker
+
+Fully containerized: MySQL, backend (Node/Express), and frontend (static
+build served by nginx, which proxies `/api` to the backend container).
+
+```bash
+cp .env.example .env   # root .env — feeds both the mysql container and the backend
+docker compose up --build
+```
+
+- Frontend: http://localhost
+- Backend: http://localhost:4000 (also reachable at `/api` through the frontend's nginx)
+- MySQL: internal to the compose network only by default (avoids clashing
+  with a MySQL already running on the host's 3306); data persisted in the
+  `mysql_data` volume regardless. See `docker-compose.yml` to publish
+  `3307:3306` if you need host access.
+- Uploaded attachments persist in the `storage_data` volume
+
+`NODE_ENV` defaults to `development` in the root `.env.example` because this
+repo creates its schema via `sequelize.sync()` on boot and has no migration
+files yet — switching to `production` disables that sync and the schema will
+never be created until real migrations exist.

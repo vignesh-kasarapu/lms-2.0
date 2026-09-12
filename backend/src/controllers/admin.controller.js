@@ -49,12 +49,13 @@ module.exports = { departments, managementLevels, grades, regions, projects, lea
 
 const workingPatternService = require('../services/workingPattern.service');
 const workingPatterns = {
-  list: async (req, res) => ok(res, await workingPatternService.listPatterns()),
+  list: async (req, res) => ok(res, await workingPatternService.listPatterns({ includeInactive: req.query.includeInactive === 'true' })),
   create: async (req, res) => created(res, await workingPatternService.createPattern(req.body, req.currentUser.employeeId)),
   assign: async (req, res) => created(res, await workingPatternService.assignPattern({ ...req.body, assignedBy: req.currentUser.employeeId })),
   assignments: async (req, res) => ok(res, await workingPatternService.listAssignments()),
   updateAssignment: async (req, res) => ok(res, await workingPatternService.updateAssignment(req.params.assignmentId, req.body, req.currentUser.employeeId)),
   deactivate: async (req, res) => ok(res, await workingPatternService.deactivatePattern(req.params.workingPatternId, req.currentUser.employeeId)),
+  reactivate: async (req, res) => ok(res, await workingPatternService.reactivatePattern(req.params.workingPatternId, req.currentUser.employeeId)),
 };
 module.exports.workingPatterns = workingPatterns;
 

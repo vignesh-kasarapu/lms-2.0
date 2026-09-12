@@ -1,6 +1,8 @@
 const { sequelize, Employee } = require('../models');
 const approvalRouting = require('./approvalRouting.service');
 const auditService = require('./audit.service');
+const roleAssignmentService = require('./roleAssignment.service');
+const { postOpeningProRata } = require('../jobs/accrual.job');
 
 const REQUIRED_FIELDS = ['fullName', 'workEmail', 'employeeCode', 'dateOfJoining', 'designation'];
 
@@ -67,6 +69,16 @@ async function importEmployees(rows, actorId) {
         designation: row.designation,
       }, { transaction });
       codeToId[row.employeeCode] = employee.employee_id;
+
+      // Give bulk-imported employees the same baseline treatment single onboarding
+      // (employee.service.js#onboardEmployee) gives them, so they aren't silently left
+      // with no leave balance and no role until the next monthly accrual run: opening
+      // pro-rata credit posting and the default EMPLOYEE role grant. Both are threaded
+      // through this same transaction since the employee row isn't committed yet.
+      // Deliberately NOT sending the onboarding-invite notification here — doing that
+      // per-row would spam a large batch; bulk-imported employees can sign in directly.
+      await postOpeningProRata(employee.employee_id, { transaction });
+      await roleAssignmentService.assignRole(employee.employee_id, 'EMPLOYEE', actorId, { transaction });
     }
 
     // Second pass: wire up reporting managers now that every code has an id.
@@ -76,7 +88,10 @@ async function importEmployees(rows, actorId) {
         || (await Employee.findOne({ where: { employee_code: row.reportingManagerCode }, transaction }))?.employee_id;
       if (!managerId) continue;
 
-      const circular = await approvalRouting.wouldCreateCircularHierarchy(codeToId[row.employeeCode], managerId);
+      // Pass the active transaction through so the circular-hierarchy walk sees any
+      // reporting_manager_id writes made earlier in THIS pass (same batch), not just
+      // what was already committed before the import started (Bug A).
+      const circular = await approvalRouting.wouldCreateCircularHierarchy(codeToId[row.employeeCode], managerId, { transaction });
       if (circular) {
         throw Object.assign(
           new Error(`Row for ${row.employeeCode}: assigning manager ${row.reportingManagerCode} would create a circular hierarchy. Import rolled back — no partial commit.`),

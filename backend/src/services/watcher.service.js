@@ -17,9 +17,20 @@ async function assertEligibleWatcher(employeeId) {
 }
 
 /** LMS-060: a Manager adds a Watcher to a specific request within their reporting line. */
-async function addWatcher({ requestId, watcherEmployeeId, addedById }) {
+async function addWatcher({ requestId, watcherEmployeeId, addedById, addedByIsHrAdmin }) {
   const request = await LeaveRequest.findByPk(requestId);
   if (!request) throw Object.assign(new Error('Request not found'), { status: 404 });
+
+  if (!addedByIsHrAdmin) {
+    const employeeService = require('./employee.service');
+    const inHierarchy = await employeeService.isInManagerHierarchy(addedById, request.employee_id);
+    if (!inHierarchy) {
+      throw Object.assign(
+        new Error('You can only add a watcher to a request raised by someone in your own reporting line.'),
+        { status: 403, code: 'NOT_IN_HIERARCHY' },
+      );
+    }
+  }
 
   await assertEligibleWatcher(watcherEmployeeId);
 
@@ -74,6 +85,24 @@ async function addStandingWatcher({ watchedEmployeeId, watcherEmployeeId, fromDa
     }
   }
 
+  // Reject a duplicate/overlapping standing-watcher entry for the same
+  // (watched, watcher) pair — a date range overlaps when it starts on or
+  // before the new range's end AND ends on or after the new range's start.
+  const overlapping = await StandingWatcher.findOne({
+    where: {
+      watched_employee_id: watchedEmployeeId,
+      watcher_employee_id: watcherEmployeeId,
+      from_date: { [Op.lte]: toDate },
+      to_date: { [Op.gte]: fromDate },
+    },
+  });
+  if (overlapping) {
+    throw Object.assign(
+      new Error('This employee already has a standing watcher assignment for an overlapping date range.'),
+      { status: 400, code: 'DUPLICATE_STANDING_WATCHER' },
+    );
+  }
+
   const standing = await StandingWatcher.create({
     watched_employee_id: watchedEmployeeId, watcher_employee_id: watcherEmployeeId,
     from_date: fromDate, to_date: toDate, added_by_id: addedById,
@@ -82,7 +111,17 @@ async function addStandingWatcher({ watchedEmployeeId, watcherEmployeeId, fromDa
   return standing;
 }
 
-async function listStandingWatchers(watchedEmployeeId) {
+async function listStandingWatchers(watchedEmployeeId, viewerId, viewerIsHrAdmin) {
+  if (!viewerIsHrAdmin) {
+    const employeeService = require('./employee.service');
+    const inHierarchy = await employeeService.isInManagerHierarchy(viewerId, watchedEmployeeId);
+    if (!inHierarchy) {
+      throw Object.assign(
+        new Error('You can only view standing watchers for your own direct or indirect reports.'),
+        { status: 403, code: 'NOT_IN_HIERARCHY' },
+      );
+    }
+  }
   return StandingWatcher.findAll({
     where: { watched_employee_id: watchedEmployeeId },
     include: [{ model: Employee, as: 'watcherEmployee', attributes: ['full_name'] }],

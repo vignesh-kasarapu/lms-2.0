@@ -103,12 +103,15 @@ async function getScopedDetail({ requestId, viewerId, viewerIsHrAdmin }) {
   const isWatcher = request.watchers.some((w) => String(w.watcher_employee_id) === String(viewerId));
   if (!isWatcher) return { scope: 'DENIED', request: null };
 
-  // Masked projection for a Watcher: dates, status, type (Sick masked) — never reason/attachments.
+  // Masked projection for a Watcher: dates, status, day-count, type (Sick masked)
+  // — never reason/attachments. deducted_days is a day COUNT (not the reason or
+  // leave-type detail), so it's safe to include per BR-42.
   const masked = {
     request_id: request.request_id,
     start_date: request.start_date,
     end_date: request.end_date,
     state: request.state,
+    deducted_days: request.deducted_days,
     employee: request.employee,
     LeaveType: request.LeaveType.is_sick_leave ? { type_name: 'Unavailable' } : { type_name: request.LeaveType.type_name },
   };
@@ -124,20 +127,37 @@ async function detail(req, res) {
   if (!result || result.scope === 'DENIED') {
     return res.status(403).json({ success: false, error: { code: 'PERMISSION_DENIED', message: 'You do not have access to this request.' } });
   }
-  return ok(res, result.request);
+  // Include `scope` alongside the request fields so the client can tell a
+  // masked (WATCHER_MASKED) response apart from a genuinely-empty field on a
+  // FULL response, rather than guessing from field presence alone.
+  return ok(res, { ...result.request, scope: result.scope });
 }
 
 async function approvalsQueue(req, res) {
   const { LeaveRequest, LeaveType, Employee, Delegation } = require('../models');
   const { Op } = require('sequelize');
+  const isHrAdmin = req.currentUser.roles.includes('HR_ADMIN');
+
+  // current_approver_id only identifies a specific PERSON — that fits the Manager stage
+  // (routed to a manager or their active delegate) and a cancellation decision (routed the
+  // same way), but PENDING_HR is a ROLE grant, not a person, and is never assigned an
+  // individual's id — every HR/Admin must see every PENDING_HR request, not just a
+  // current_approver_id match (which would never be true for anyone).
+  const scopeClauses = [
+    { current_approver_id: req.currentUser.employeeId, state: { [Op.in]: ['PENDING_MANAGER', 'CANCELLATION_REQUESTED'] } },
+  ];
+  if (isHrAdmin) {
+    scopeClauses.push({ state: 'PENDING_HR' });
+    // A cancellation request from an employee with no manager on record (top-of-hierarchy
+    // self-approver) has no current_approver_id to route to — HR/Admin is the fallback.
+    scopeClauses.push({ state: 'CANCELLATION_REQUESTED', current_approver_id: null });
+  }
+
   const requests = await LeaveRequest.findAll({
-    where: {
-      current_approver_id: req.currentUser.employeeId,
-      state: { [Op.in]: ['PENDING_MANAGER', 'PENDING_HR'] },
-    },
+    where: { [Op.or]: scopeClauses },
     include: [
       { model: LeaveType, attributes: ['type_name'] },
-      { model: Employee, as: 'employee', attributes: ['full_name', 'employee_code', 'reporting_manager_id'] },
+      { model: Employee, as: 'employee', attributes: ['full_name', 'first_name', 'last_name', 'employee_code', 'reporting_manager_id', 'designation'] },
     ],
     order: [['sla_started_at', 'ASC']],
   });
@@ -162,6 +182,7 @@ async function approvalsQueue(req, res) {
       ...request.toJSON(),
       is_delegated: Boolean(delegation),
       delegated_for: delegation?.nominator || null,
+      decision_type: request.state === 'CANCELLATION_REQUESTED' ? 'CANCELLATION' : 'REQUEST',
     };
   });
 
@@ -172,6 +193,7 @@ async function addWatcher(req, res) {
   const watcherService = require('../services/watcher.service');
   const watcher = await watcherService.addWatcher({
     requestId: req.params.requestId, watcherEmployeeId: req.body.watcherEmployeeId, addedById: req.currentUser.employeeId,
+    addedByIsHrAdmin: req.currentUser.roles.includes('HR_ADMIN'),
   });
   return created(res, watcher);
 }

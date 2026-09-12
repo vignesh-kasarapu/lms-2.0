@@ -10,7 +10,7 @@ router.get('/', requireAuth, requireRole('HR_ADMIN'), employeeController.list);
 router.post('/', requireAuth, requireRole('HR_ADMIN'), employeeController.createEmployee);
 router.patch('/:employeeId/manager', requireAuth, requireRole('HR_ADMIN'), employeeController.updateManager);
 router.patch('/:employeeId', requireAuth, requireRole('HR_ADMIN'), employeeController.updateDetails);
-router.get('/my-team', requireAuth, requireRole('MANAGER'), employeeController.myTeam);
+router.get('/my-team', requireAuth, requireRole('MANAGER', 'HR_ADMIN'), employeeController.myTeam);
 router.get('/peer-calendar', requireAuth, employeeController.peerCalendar);
 router.get('/team-calendar', requireAuth, requireRole('MANAGER', 'HR_ADMIN'), employeeController.teamCalendar);
 router.get('/watchable', requireAuth, requireRole('MANAGER', 'HR_ADMIN'), employeeController.watchableEmployees);

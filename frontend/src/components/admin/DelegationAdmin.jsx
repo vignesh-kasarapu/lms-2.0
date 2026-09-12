@@ -68,40 +68,40 @@ export default function DelegationAdmin() {
 
   return (
     <GlassCard>
-      <h3 className="font-display font-bold text-slate-100 mb-1 flex items-center gap-2">
+      <h3 className="font-display font-bold text-ink-100 mb-1 flex items-center gap-2">
         <UserCog className="w-4 h-4 text-aurora-violet" /> Delegations
       </h3>
-      <p className="text-xs text-slate-500 mb-4">HR/Admin can set a delegate for any manager. Only same-level peer managers are offered.</p>
+      <p className="text-xs text-ink-500 mb-4">HR/Admin can set a delegate for any manager. Only same-level peer managers are offered.</p>
 
       <div className="mb-6 rounded-2xl border border-indigo-500/20 bg-indigo-500/[0.04] p-4">
         <div className="flex items-center gap-2 mb-3">
           <ShieldCheck className="w-4 h-4 text-indigo-300" />
-          <h4 className="text-sm font-bold text-slate-100">Set delegation for a manager</h4>
+          <h4 className="text-sm font-bold text-ink-100">Set delegation for a manager</h4>
         </div>
         <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label className="text-[11px] font-semibold uppercase text-slate-400">
+          <label className="text-[11px] font-semibold uppercase text-ink-400">
             Manager being covered
-            <select className="glass-input mt-1 text-slate-200 bg-void-900" value={nominatorId} onChange={(e) => selectManager(e.target.value)} required>
+            <select className="glass-input mt-1 text-ink-200 bg-void-900" value={nominatorId} onChange={(e) => selectManager(e.target.value)} required>
               <option value="">Select manager</option>
               {managers.map((manager) => (
                 <option key={manager.employee_id} value={manager.employee_id}>{manager.full_name} ({manager.employee_code})</option>
               ))}
             </select>
           </label>
-          <label className="text-[11px] font-semibold uppercase text-slate-400">
+          <label className="text-[11px] font-semibold uppercase text-ink-400">
             Appoint delegate
-            <select className="glass-input mt-1 text-slate-200 bg-void-900" value={delegateId} onChange={(e) => setDelegateId(e.target.value)} disabled={!nominatorId} required>
+            <select className="glass-input mt-1 text-ink-200 bg-void-900" value={delegateId} onChange={(e) => setDelegateId(e.target.value)} disabled={!nominatorId} required>
               <option value="">{nominatorId ? (candidates.length ? 'Select same-level manager' : 'No eligible peer managers') : 'Select manager first'}</option>
               {candidates.map((candidate) => (
                 <option key={candidate.employee_id} value={candidate.employee_id}>{candidate.full_name} ({candidate.employee_code})</option>
               ))}
             </select>
           </label>
-          <label className="text-[11px] font-semibold uppercase text-slate-400">
+          <label className="text-[11px] font-semibold uppercase text-ink-400">
             From date
             <input type="date" className="glass-input mt-1" value={fromDate} onChange={(e) => setFromDate(e.target.value)} required />
           </label>
-          <label className="text-[11px] font-semibold uppercase text-slate-400">
+          <label className="text-[11px] font-semibold uppercase text-ink-400">
             To date
             <input type="date" className="glass-input mt-1" value={toDate} onChange={(e) => setToDate(e.target.value)} required />
           </label>
@@ -113,18 +113,18 @@ export default function DelegationAdmin() {
         </form>
       </div>
 
-      <h4 className="text-sm font-bold text-slate-100 mb-3">All delegations</h4>
+      <h4 className="text-sm font-bold text-ink-100 mb-3">All delegations</h4>
       {loading ? (
-        <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-12 rounded-xl bg-white/[0.03] animate-pulse" />)}</div>
+        <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-12 rounded-xl bg-frost/[0.03] animate-pulse" />)}</div>
       ) : !delegations.length ? (
         <EmptyState icon={UserCog} title="No delegations exist yet" />
       ) : (
-        <div className="divide-y divide-white/5">
+        <div className="divide-y divide-frost/5">
           {delegations.map((d) => (
             <div key={d.delegation_id} className="py-3 flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-100">{d.nominator?.full_name} → {d.delegate?.full_name}</p>
-                <p className="text-xs text-slate-500">{d.from_date} to {d.to_date}{d.revoked_at ? ' · revoked' : ''}</p>
+                <p className="text-sm text-ink-100">{d.nominator?.full_name} → {d.delegate?.full_name}</p>
+                <p className="text-xs text-ink-500">{d.from_date} to {d.to_date}{d.revoked_at ? ' · revoked' : ''}</p>
               </div>
             </div>
           ))}

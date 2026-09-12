@@ -75,7 +75,16 @@ async function escalateOneLevel(request) {
 
 async function findHrAdminQueueId() {
   const { EmployeeRole, Role } = require('../models');
-  const hrAdmin = await EmployeeRole.findOne({ include: [{ model: Role, where: { role_code: 'HR_ADMIN' } }] });
+  // Only route to an active HR_ADMIN — a deactivated employee's role grant is never a valid
+  // escalation target. Order deterministically (lowest employee_id first) so the same admin
+  // is picked consistently across escalations rather than whatever order the DB happens to return.
+  const hrAdmin = await EmployeeRole.findOne({
+    include: [
+      { model: Role, where: { role_code: 'HR_ADMIN' } },
+      { model: Employee, where: { is_active: true } }, // `status` is a VIRTUAL getter over is_active — unusable in a WHERE clause
+    ],
+    order: [['employee_id', 'ASC']],
+  });
   return hrAdmin ? hrAdmin.employee_id : null;
 }
 

@@ -12,7 +12,20 @@ client.interceptors.response.use(
   (err) => {
     const message = err.response?.data?.error?.message || 'Something went wrong. Please try again.';
     const code = err.response?.data?.error?.code || 'UNKNOWN';
-    return Promise.reject({ code, message, status: err.response?.status });
+    const status = err.response?.status;
+
+    // The session cookie can expire or be invalidated at any point (LMS-002/auth.middleware.js
+    // returns 401 with NO_SESSION/SESSION_INVALID) — without this, every page just shows a
+    // generic inline error forever with no way back to a signed-in state. Force a return to
+    // /login instead, unless we're already there (avoids a redirect loop on the login page's
+    // own failed sign-in attempts).
+    if (status === 401 && window.location.pathname !== '/login') {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = '/login';
+    }
+
+    return Promise.reject({ code, message, status });
   },
 );
 
