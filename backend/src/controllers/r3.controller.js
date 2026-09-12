@@ -7,15 +7,22 @@ const { ok, created } = require('../utils/apiResponse');
 
 // --- Blackout periods (LMS-085), HR/Admin ---
 const blackout = {
-  list: async (req, res) => ok(res, await blackoutService.listBlackoutPeriods()),
+  list: async (req, res) => ok(res, await blackoutService.listBlackoutPeriods({ includeInactive: req.query.includeInactive === 'true' })),
   create: async (req, res) => created(res, await blackoutService.createBlackoutPeriod(req.body, req.currentUser.employeeId)),
+  update: async (req, res) => ok(res, await blackoutService.updateBlackoutPeriod(req.params.blackoutId, req.body, req.currentUser.employeeId)),
+  setActive: async (req, res) => ok(res, await blackoutService.setActive(req.params.blackoutId, !!req.body.isActive, req.currentUser.employeeId)),
   deactivate: async (req, res) => ok(res, await blackoutService.deactivate(req.params.blackoutId, req.currentUser.employeeId)),
+  remove: async (req, res) => ok(res, await blackoutService.removeBlackoutPeriod(req.params.blackoutId, req.currentUser.employeeId)),
 };
 
 // --- Team capacity limits (LMS-086), HR/Admin ---
 const capacity = {
   listForManager: async (req, res) => ok(res, await capacityService.listForManager(req.params.managerId)),
+  listAll: async (req, res) => ok(res, await capacityService.listAll()),
   create: async (req, res) => created(res, await capacityService.createLimit(req.body, req.currentUser.employeeId)),
+  update: async (req, res) => ok(res, await capacityService.updateLimit(req.params.capacityLimitId, req.body, req.currentUser.employeeId)),
+  setActive: async (req, res) => ok(res, await capacityService.setActive(req.params.capacityLimitId, !!req.body.isActive, req.currentUser.employeeId)),
+  remove: async (req, res) => ok(res, await capacityService.removeLimit(req.params.capacityLimitId, req.currentUser.employeeId)),
 };
 
 // --- Leave encashment (LMS-084), HR/Admin initiates, employee can view own ---

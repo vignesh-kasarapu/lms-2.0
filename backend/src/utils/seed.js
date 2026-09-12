@@ -102,6 +102,7 @@ async function seed() {
     ['LONG_LEAVE_SUPERVISOR_NOTICE', 'Long leave submitted in your reporting line', '{{employeeName}}\'s request has entered second-stage (HR) approval. This is notification only — you have no approval authority over it.'],
     ['EXTENDED_SICK_LEAVE_ALERT', 'Extended sick leave', '{{employeeName}} has an extended sick leave request ({{days}} day(s)).'],
     ['CARRY_FORWARD_APPLIED', 'Carry-forward applied', 'Your leave-year rollover is complete: {{carried}} day(s) carried forward, {{lapsed}} day(s) lapsed.'],
+    ['EMPLOYEE_ONBOARDING_INVITE', 'Welcome to LMS — sign in to get started', 'Hi {{fullName}}, your employee record has been created. Sign in at {{signInUrl}} using your work email with your Microsoft account (single sign-on) to access the system.'],
   ];
   for (const [key, subject, body] of templates) {
     await NotificationTemplate.findOrCreate({ where: { template_key: key }, defaults: { subject_template: subject, body_template: body } });

@@ -27,6 +27,11 @@ async function updateManager(req, res) {
   return ok(res, employee);
 }
 
+async function updateDetails(req, res) {
+  const employee = await employeeService.updateEmployeeDetails(req.params.employeeId, req.body, req.currentUser.employeeId);
+  return ok(res, employee);
+}
+
 async function myTeam(req, res) {
   const team = await employeeService.getTeamBalances(req.currentUser.employeeId);
   return ok(res, team);
@@ -47,4 +52,4 @@ async function watchableEmployees(req, res) {
   return ok(res, employees);
 }
 
-module.exports = { me, dashboard, list, createEmployee, updateManager, myTeam, peerCalendar, teamCalendar, watchableEmployees };
+module.exports = { me, dashboard, list, createEmployee, updateManager, updateDetails, myTeam, peerCalendar, teamCalendar, watchableEmployees };

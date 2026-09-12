@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { ListPlus, Sparkles, ShieldAlert, CheckCircle2 } from 'lucide-react';
-import { listLeaveTypes, createLeaveType } from '../../api/admin';
+import { listLeaveTypes, createLeaveType, updateLeaveTypePolicy } from '../../api/admin';
 import GlassCard from '../common/GlassCard';
+import Modal from '../common/Modal';
+import { PrimaryButton } from '../common/GlassButton';
 
 const empty = { typeCode: '', typeName: '', annualEntitlement: '', accrualMethod: 'MONTHLY', carriesForward: false, carryForwardCap: '', permitsHalfDay: true, permitsAttachments: false, isSickLeave: false };
 
@@ -9,9 +11,22 @@ export default function LeaveTypeAdmin() {
   const [types, setTypes] = useState([]);
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
 
   const load = () => listLeaveTypes().then((res) => setTypes(res.data));
   useEffect(() => { load(); }, []);
+
+  const quickToggle = async (t, e) => {
+    e.stopPropagation();
+    setTogglingId(t.leave_type_id);
+    try {
+      await updateLeaveTypePolicy(t.leave_type_id, { isSelectableByEmployee: !t.is_selectable_by_employee });
+      await load();
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -94,7 +109,14 @@ export default function LeaveTypeAdmin() {
 
         <div className="divide-y divide-white/10">
           {types.map((t) => (
-            <div key={t.leave_type_id} className="py-4 flex items-center justify-between gap-4">
+            <div
+              key={t.leave_type_id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setEditing(t)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditing(t); } }}
+              className="w-full py-4 flex items-center justify-between gap-4 text-left hover:bg-white/[0.03] transition-colors rounded-xl px-2 -mx-2 cursor-pointer"
+            >
               <div>
                 <div className="flex items-center gap-2">
                   <p className="text-base font-extrabold text-slate-100">{t.type_name}</p>
@@ -106,6 +128,11 @@ export default function LeaveTypeAdmin() {
                       System Default
                     </span>
                   )}
+                  {!t.is_selectable_by_employee && (
+                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-status-rejected/10 text-status-rejected border border-status-rejected/30">
+                      Disabled
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs font-medium text-slate-400 mt-1">
                   <strong className="text-indigo-400">{t.LeavePolicy?.annual_entitlement || 0} days/yr</strong> · {t.LeaveAccrualConfig?.accrual_method?.toLowerCase()} accrual
@@ -113,7 +140,7 @@ export default function LeaveTypeAdmin() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 {t.is_sick_leave && (
                   <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-status-info/10 text-status-info border border-status-info/30">
                     Medical Rules
@@ -124,12 +151,100 @@ export default function LeaveTypeAdmin() {
                     Proof Required
                   </span>
                 )}
+                {!t.is_system && (
+                  <button
+                    type="button"
+                    onClick={(e) => quickToggle(t, e)}
+                    disabled={togglingId === t.leave_type_id}
+                    title={t.is_selectable_by_employee ? 'Disable this leave type' : 'Enable this leave type'}
+                    className={`text-xs font-bold px-2.5 py-1 rounded-full border transition-colors shrink-0 disabled:opacity-50 ${
+                      t.is_selectable_by_employee
+                        ? 'text-status-rejected border-status-rejected/30 bg-status-rejected/10 hover:bg-status-rejected/20'
+                        : 'text-status-approved border-status-approved/30 bg-status-approved/10 hover:bg-status-approved/20'
+                    }`}
+                  >
+                    {togglingId === t.leave_type_id ? '…' : t.is_selectable_by_employee ? 'Disable' : 'Enable'}
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </div>
       </GlassCard>
+
+      {editing && (
+        <LeaveTypeEditModal
+          leaveType={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); load(); }}
+        />
+      )}
     </div>
+  );
+}
+
+function LeaveTypeEditModal({ leaveType, onClose, onSaved }) {
+  const [values, setValues] = useState({
+    annualEntitlement: leaveType.LeavePolicy?.annual_entitlement ?? '',
+    carriesForward: !!leaveType.LeavePolicy?.carries_forward,
+    carryForwardCap: leaveType.LeavePolicy?.carry_forward_cap ?? '',
+    isSelectableByEmployee: leaveType.is_selectable_by_employee,
+  });
+  const [saving, setSaving] = useState(false);
+  const isLocked = leaveType.is_system;
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await updateLeaveTypePolicy(leaveType.leave_type_id, values);
+      onSaved();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title={leaveType.type_name} maxWidth="max-w-md">
+      {isLocked ? (
+        <p className="text-sm text-slate-400">The system Loss-of-Pay type cannot be edited or disabled.</p>
+      ) : (
+        <div className="space-y-4">
+          <div>
+            <label className="text-[11px] font-bold uppercase text-slate-400 mb-1 block">Annual Entitlement (Days)</label>
+            <input type="number" step="0.5" className="glass-input font-bold" value={values.annualEntitlement}
+              onChange={(e) => setValues((v) => ({ ...v, annualEntitlement: e.target.value }))} />
+          </div>
+          <Toggle label="Carry-forward" checked={values.carriesForward} onChange={(v) => setValues((s) => ({ ...s, carriesForward: v }))} />
+          {values.carriesForward && (
+            <div>
+              <label className="text-[11px] font-bold uppercase text-slate-400 mb-1 block">Carry-Forward Cap (Days)</label>
+              <input type="number" step="0.5" className="glass-input font-bold" value={values.carryForwardCap}
+                onChange={(e) => setValues((v) => ({ ...v, carryForwardCap: e.target.value }))} />
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/10">
+            <div>
+              <p className="text-sm font-bold text-slate-100">Employees can apply for this leave type</p>
+              <p className="text-xs text-slate-500 mt-0.5">Disabling removes it from the Apply Leave picker for everyone.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setValues((v) => ({ ...v, isSelectableByEmployee: !v.isSelectableByEmployee }))}
+              className={`relative w-12 h-6 rounded-full transition-all shrink-0 border-2 ${
+                values.isSelectableByEmployee ? 'bg-emerald-500 border-emerald-400' : 'bg-slate-800 border-slate-600'
+              }`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${values.isSelectableByEmployee ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+          </div>
+
+          <PrimaryButton onClick={save} disabled={saving} className="w-full mt-2">
+            {saving ? 'Saving…' : 'Save changes'}
+          </PrimaryButton>
+        </div>
+      )}
+    </Modal>
   );
 }
 

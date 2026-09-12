@@ -1,31 +1,52 @@
 import { useEffect, useState } from 'react';
-import { UserPlus, Upload, Search, Users, CheckCircle2, AlertCircle } from 'lucide-react';
+import { UserPlus, Upload, Search, Users, CheckCircle2, AlertCircle, Plus, Pencil } from 'lucide-react';
 import { listEmployees, createEmployee, bulkImportEmployees } from '../../api/employees';
-import { listManagementLevels } from '../../api/admin';
+import { listManagementLevels, listRegions, createRegion } from '../../api/admin';
 import GlassCard from '../common/GlassCard';
 import StandingWatcherControl from '../common/StandingWatcherControl';
 import EmployeeLifecycleActions from './EmployeeLifecycleActions';
+import RoleAssignment from './RoleAssignment';
+import EditEmployeeModal from './EditEmployeeModal';
+import { celebrate } from '../../utils/celebrate';
 
-const empty = { fullName: '', workEmail: '', employeeCode: '', dateOfJoining: '', designation: '', departmentName: '', roleCode: 'EMPLOYEE', managementLevelId: '', reportingManagerId: '' };
+const empty = {
+  fullName: '', workEmail: '', employeeCode: '', dateOfJoining: '', designation: '', departmentName: '',
+  roleCode: 'EMPLOYEE', managementLevelId: '', reportingManagerId: '',
+  gender: '', maritalStatus: '', regionId: '',
+};
 
 export default function EmployeeAdmin() {
   const [employees, setEmployees] = useState([]);
   const [managementLevels, setManagementLevels] = useState([]);
+  const [regions, setRegions] = useState([]);
+  const [addingRegion, setAddingRegion] = useState(false);
+  const [newRegion, setNewRegion] = useState({ code: '', name: '' });
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [importResult, setImportResult] = useState(null);
   const [importing, setImporting] = useState(false);
   const [search, setSearch] = useState('');
-  const isManager = form.roleCode === 'MANAGER';
+  const [editingEmployee, setEditingEmployee] = useState(null);
 
-  const load = () => Promise.all([listEmployees(), listManagementLevels()]).then(([employeeRes, levelRes]) => {
+  const load = () => Promise.all([listEmployees(), listManagementLevels(), listRegions()]).then(([employeeRes, levelRes, regionRes]) => {
     setEmployees(employeeRes.data);
     setManagementLevels(levelRes.data);
+    setRegions(regionRes.data);
   });
   useEffect(() => {
     load();
   }, []);
+
+  const submitNewRegion = async (e) => {
+    e.preventDefault();
+    if (!newRegion.code.trim() || !newRegion.name.trim()) return;
+    const res = await createRegion(newRegion);
+    setRegions((r) => [...r, res.data]);
+    setForm((f) => ({ ...f, regionId: res.data.region_id }));
+    setNewRegion({ code: '', name: '' });
+    setAddingRegion(false);
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -34,6 +55,7 @@ export default function EmployeeAdmin() {
     try {
       await createEmployee(form);
       setForm(empty);
+      celebrate();
       load();
     } catch (err) {
       setError(err.message);
@@ -108,28 +130,27 @@ export default function EmployeeAdmin() {
           <div>
             <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Assigned Role</label>
             <select className="glass-input text-slate-200 bg-void-900" value={form.roleCode}
-              onChange={(e) => setForm((f) => ({
-                ...f,
-                roleCode: e.target.value,
-                managementLevelId: e.target.value === 'MANAGER' ? f.managementLevelId : '',
-              }))} required>
+              onChange={(e) => setForm((f) => ({ ...f, roleCode: e.target.value, managementLevelId: e.target.value === 'EMPLOYEE' ? '' : f.managementLevelId }))} required>
               <option value="EMPLOYEE">Employee</option>
               <option value="MANAGER">Manager</option>
               <option value="HR_ADMIN">HR Admin</option>
             </select>
+            <p className="text-[10px] text-slate-500 mt-1">Roles can also be granted or revoked later from the directory below.</p>
           </div>
-          {isManager && <div>
-            <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Management Level</label>
-            <select className="glass-input text-slate-200 bg-void-900" value={form.managementLevelId}
-              onChange={(e) => setForm((f) => ({ ...f, managementLevelId: e.target.value }))} required>
-              <option value="">Select management level</option>
-              {managementLevels.map((level) => (
-                <option key={level.management_level_id} value={level.management_level_id}>
-                  {level.level_code} — {level.level_name}
-                </option>
-              ))}
-            </select>
-          </div>}
+          {form.roleCode !== 'EMPLOYEE' && (
+            <div>
+              <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Management Level (optional)</label>
+              <select className="glass-input text-slate-200 bg-void-900" value={form.managementLevelId}
+                onChange={(e) => setForm((f) => ({ ...f, managementLevelId: e.target.value }))}>
+                <option value="">No management level</option>
+                {managementLevels.map((level) => (
+                  <option key={level.management_level_id} value={level.management_level_id}>
+                    {level.level_code} — {level.level_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Reporting Manager</label>
             <select className="glass-input text-slate-200 bg-void-900" value={form.reportingManagerId}
@@ -137,6 +158,48 @@ export default function EmployeeAdmin() {
               <option value="">No reporting manager (Top Level)</option>
               {employees.map((emp) => <option key={emp.employee_id} value={emp.employee_id}>{emp.full_name} ({emp.designation})</option>)}
             </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Gender (optional)</label>
+              <select className="glass-input text-slate-200 bg-void-900" value={form.gender}
+                onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value }))}>
+                <option value="">Prefer not to say</option>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Marital Status (optional)</label>
+              <input className="glass-input" placeholder="e.g. Single, Married" value={form.maritalStatus}
+                onChange={(e) => setForm((f) => ({ ...f, maritalStatus: e.target.value }))} />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Region of Working</label>
+            <div className="flex gap-1.5">
+              <select className="glass-input text-slate-200 bg-void-900 flex-1" value={form.regionId}
+                onChange={(e) => setForm((f) => ({ ...f, regionId: e.target.value }))}>
+                <option value="">No region</option>
+                {regions.map((r) => <option key={r.region_id} value={r.region_id}>{r.region_name}</option>)}
+              </select>
+              <button type="button" onClick={() => setAddingRegion((v) => !v)}
+                className="ghost-btn !px-3 shrink-0" title="Add a new region">
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-500 mt-1">Determines which holidays this employee sees and has deducted.</p>
+            {addingRegion && (
+              <div className="flex gap-1.5 mt-1.5">
+                <input className="glass-input !py-1.5 text-xs w-20" placeholder="Code" value={newRegion.code}
+                  onChange={(e) => setNewRegion((r) => ({ ...r, code: e.target.value.toUpperCase() }))} />
+                <input className="glass-input !py-1.5 text-xs flex-1" placeholder="Region name" value={newRegion.name}
+                  onChange={(e) => setNewRegion((r) => ({ ...r, name: e.target.value }))} />
+                <button type="button" onClick={submitNewRegion} className="admin-btn !px-3 !py-1.5 text-xs shrink-0">Add</button>
+              </div>
+            )}
           </div>
 
           {error && <p className="text-xs font-semibold text-status-rejected bg-status-rejected/10 p-2 rounded-lg">{error}</p>}
@@ -194,31 +257,35 @@ export default function EmployeeAdmin() {
           </div>
         </div>
 
-        <div className="divide-y divide-white/5 pr-1">
+        <div className="divide-y divide-white/5 pr-1 max-h-[75vh] overflow-y-auto">
           {!filtered.length ? (
             <p className="text-xs text-slate-500 py-8 text-center">No employees matching search criteria.</p>
           ) : (
             filtered.map((emp) => (
-              <div key={emp.employee_id} className="py-3.5 space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-600 to-amber-600 text-white font-bold text-xs flex items-center justify-center shadow-md">
+              <div key={emp.employee_id} className="py-3.5 space-y-2.5">
+                <button
+                  type="button"
+                  onClick={() => setEditingEmployee(emp)}
+                  className="w-full flex items-center justify-between gap-3 group text-left rounded-lg -mx-1.5 px-1.5 py-1 hover:bg-white/[0.03] transition-colors"
+                  title="Click to edit employee details"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-600 to-amber-600 text-white font-bold text-xs flex items-center justify-center shadow-md shrink-0">
                       {emp.full_name?.slice(0, 2).toUpperCase()}
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-100">{emp.full_name}</p>
-                      <p className="text-xs text-slate-400">{emp.designation} · <span className="font-mono text-slate-300">{emp.employee_code}</span></p>
-                      <div className="flex flex-wrap gap-1.5 mt-1.5">
-                        {(emp.Roles || []).map((role) => (
-                          <span key={role.role_code} className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full text-indigo-300 bg-indigo-500/10 border border-indigo-500/30">
-                            {role.role_name || role.role_code}
-                          </span>
-                        ))}
-                      </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-100 flex items-center gap-1.5 truncate">
+                        {emp.full_name}
+                        <Pencil className="w-3 h-3 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                      </p>
+                      <p className="text-xs text-slate-400 truncate">{emp.designation} · <span className="font-mono text-slate-300">{emp.employee_code}</span></p>
+                      {emp.Department?.department_name && (
+                        <p className="text-[11px] text-slate-500 truncate">{emp.Department.department_name}</p>
+                      )}
                     </div>
                   </div>
 
-                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
+                  <span className={`shrink-0 text-[11px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
                     emp.status === 'ACTIVE'
                       ? 'text-status-approved border-status-approved/30 bg-status-approved/10'
                       : 'text-slate-400 border-slate-500/30 bg-slate-500/10'
@@ -226,9 +293,11 @@ export default function EmployeeAdmin() {
                     <span className={`w-1.5 h-1.5 rounded-full ${emp.status === 'ACTIVE' ? 'bg-status-approved' : 'bg-slate-500'}`} />
                     {emp.status}
                   </span>
-                </div>
+                </button>
 
-                <div className="bg-white/[0.02] p-2.5 rounded-xl border border-white/5 space-y-2">
+                <div className="bg-white/[0.02] p-2.5 rounded-xl border border-white/5 flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <RoleAssignment employeeId={emp.employee_id} />
+                  <div className="hidden sm:block w-px h-4 bg-white/10" />
                   <StandingWatcherControl employeeId={emp.employee_id} employeeName={emp.full_name} />
                   <EmployeeLifecycleActions employee={emp} allEmployees={employees} onChange={load} />
                 </div>
@@ -237,6 +306,16 @@ export default function EmployeeAdmin() {
           )}
         </div>
       </GlassCard>
+
+      {editingEmployee && (
+        <EditEmployeeModal
+          employee={editingEmployee}
+          managementLevels={managementLevels}
+          regions={regions}
+          onClose={() => setEditingEmployee(null)}
+          onSaved={load}
+        />
+      )}
     </div>
   );
 }

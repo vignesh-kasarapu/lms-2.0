@@ -1,9 +1,11 @@
 const { Op } = require('sequelize');
-const { Employee, Department, LeaveType, LeaveYear, LeaveRequest, Role } = require('../models');
+const { Employee, Department, Region, LeaveType, LeaveYear, LeaveRequest, Role } = require('../models');
 const balanceService = require('./balance.service');
 const approvalRouting = require('./approvalRouting.service');
 const auditService = require('./audit.service');
 const roleAssignmentService = require('./roleAssignment.service');
+const notificationService = require('./notification.service');
+const env = require('../config/env');
 
 /** LMS-036/dashboard: balance card per leave type — available, committed, effective, projected. */
 async function getDashboard(employeeId) {
@@ -39,9 +41,30 @@ async function listEmployees({ search, departmentId, gradeId } = {}) {
   // cannot be used in MySQL's ORDER BY clause. Sort by the real columns.
   return Employee.findAll({
     where,
-    include: [{ model: Role, attributes: ['role_code', 'role_name'], through: { attributes: [] } }],
+    include: [
+      { model: Role, attributes: ['role_code', 'role_name'], through: { attributes: [] } },
+      { model: Department, attributes: ['department_name'] },
+      { model: Region, attributes: ['region_name'] },
+    ],
     order: [['first_name', 'ASC'], ['last_name', 'ASC']],
   });
+}
+
+/** Finds a department by name, creating it (with a derived unique code) if it doesn't exist yet. */
+async function resolveDepartmentId(departmentName) {
+  const name = departmentName.trim();
+  let department = await Department.findOne({ where: { department_name: name } });
+  if (!department) {
+    const baseCode = name.toUpperCase().replace(/[^A-Z0-9]+/g, '_').slice(0, 24) || 'DEPARTMENT';
+    let departmentCode = baseCode;
+    let suffix = 1;
+    while (await Department.findOne({ where: { department_code: departmentCode } })) {
+      departmentCode = `${baseCode.slice(0, 24 - String(suffix).length - 1)}_${suffix}`;
+      suffix += 1;
+    }
+    department = await Department.create({ department_code: departmentCode, department_name: name });
+  }
+  return department.department_id;
 }
 
 /** LMS-010/012: create employee, then auto pro-rata entitlement is posted by a dedicated onboarding job. */
@@ -74,9 +97,6 @@ async function onboardEmployee(payload, createdBy) {
   if (!allowedRoles.includes(roleCode)) {
     throw Object.assign(new Error('Select a valid assigned role.'), { status: 400, code: 'VALIDATION_ERROR' });
   }
-  if (roleCode === 'MANAGER' && !payload.managementLevelId) {
-    throw Object.assign(new Error('Management level is required for Managers.'), { status: 400, code: 'VALIDATION_ERROR' });
-  }
 
   if (!payload.departmentId && !payload.departmentName?.trim()) {
     throw Object.assign(new Error('Department is required.'), { status: 400, code: 'VALIDATION_ERROR' });
@@ -89,18 +109,7 @@ async function onboardEmployee(payload, createdBy) {
 
   let departmentId = payload.departmentId || null;
   if (payload.departmentName?.trim()) {
-    let department = await Department.findOne({ where: { department_name: payload.departmentName.trim() } });
-    if (!department) {
-      const baseCode = payload.departmentName.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').slice(0, 24) || 'DEPARTMENT';
-      let departmentCode = baseCode;
-      let suffix = 1;
-      while (await Department.findOne({ where: { department_code: departmentCode } })) {
-        departmentCode = `${baseCode.slice(0, 24 - String(suffix).length - 1)}_${suffix}`;
-        suffix += 1;
-      }
-      department = await Department.create({ department_code: departmentCode, department_name: payload.departmentName.trim() });
-    }
-    departmentId = department.department_id;
+    departmentId = await resolveDepartmentId(payload.departmentName);
   }
 
   const employee = await Employee.create({
@@ -110,8 +119,11 @@ async function onboardEmployee(payload, createdBy) {
     full_name: payload.fullName,
     date_of_joining: payload.dateOfJoining,
     department_id: departmentId,
-    grade_id: payload.gradeId,
-    management_level_id: payload.managementLevelId,
+    grade_id: payload.gradeId || null,
+    management_level_id: payload.managementLevelId || null,
+    region_id: payload.regionId || null,
+    gender: payload.gender || null,
+    marital_status: payload.maritalStatus || null,
     designation: payload.designation,
     reporting_manager_id: payload.reportingManagerId || null,
   });
@@ -125,6 +137,50 @@ async function onboardEmployee(payload, createdBy) {
   // Pro-rata opening entitlement posting (BR-13 to BR-15) is triggered here via the accrual job.
   const { postOpeningProRata } = require('../jobs/accrual.job');
   await postOpeningProRata(employee.employee_id);
+
+  // Invite the new hire to sign in with their work-email Microsoft account. Reuses the
+  // existing notification/email pipeline (notification.service.js -> utils/mailer.js) —
+  // authentication itself, org-membership verification, and role-based access are all
+  // already handled by the Entra SSO callback + requireAuth/requireRole on every request.
+  await notificationService.notify({
+    recipientId: employee.employee_id,
+    templateKey: 'EMPLOYEE_ONBOARDING_INVITE',
+    tokens: { fullName: employee.full_name, signInUrl: `${env.clientBaseUrl}/login` },
+  });
+
+  return employee;
+}
+
+/** HR edits an existing employee's profile fields. Reporting manager and role are deliberately
+ * excluded here — they have their own dedicated, business-rule-checked actions (setReportingManager /
+ * reassignManager, roleAssignment.service.js) rather than being folded into a generic bulk update. */
+async function updateEmployeeDetails(employeeId, payload, actorId) {
+  const employee = await Employee.findByPk(employeeId);
+  if (!employee) throw Object.assign(new Error('Employee not found'), { status: 404, code: 'NOT_FOUND' });
+
+  if (payload.fullName !== undefined && !String(payload.fullName).trim()) {
+    throw Object.assign(new Error('Full name is required.'), { status: 400, code: 'VALIDATION_ERROR' });
+  }
+  if (payload.designation !== undefined && !String(payload.designation).trim()) {
+    throw Object.assign(new Error('Designation is required.'), { status: 400, code: 'VALIDATION_ERROR' });
+  }
+
+  const updates = {};
+  if (payload.fullName !== undefined) updates.full_name = payload.fullName.trim();
+  if (payload.designation !== undefined) updates.designation = payload.designation.trim();
+  if (payload.managementLevelId !== undefined) updates.management_level_id = payload.managementLevelId || null;
+  if (payload.gender !== undefined) updates.gender = payload.gender || null;
+  if (payload.maritalStatus !== undefined) updates.marital_status = payload.maritalStatus || null;
+  if (payload.regionId !== undefined) updates.region_id = payload.regionId || null;
+  if (payload.departmentName?.trim()) {
+    updates.department_id = await resolveDepartmentId(payload.departmentName);
+  }
+
+  await employee.update(updates);
+
+  await auditService.record({
+    actorId, action: 'EMPLOYEE_UPDATED', entityType: 'employees', entityId: employee.employee_id, newValue: updates,
+  });
 
   return employee;
 }
@@ -228,19 +284,34 @@ async function getPeerCalendar(employeeId, { from, to } = {}) {
   return requests;
 }
 
-/** LMS-060/063: candidates for the "add watcher" picker — must hold Manager or HR/Admin. */
+/** LMS-060/063: candidates for the "add watcher" picker — must hold Manager (derived from hierarchy) or HR/Admin (explicit role). */
 async function listWatchableEmployees() {
-  const { EmployeeRole, Role } = require('../models');
-  const { Op } = require('sequelize');
-  const rows = await EmployeeRole.findAll({
+  const seen = new Map();
+
+  const managers = await Employee.findAll({
+    where: { is_active: true },
     include: [
-      { model: Role, where: { role_code: { [Op.in]: ['MANAGER', 'HR_ADMIN'] } }, attributes: [] },
-      { model: Employee, attributes: ['employee_id', 'full_name', 'employee_code'] },
+      { model: Employee, as: 'directReports', where: { is_active: true }, attributes: [], required: true },
+      { model: Department, attributes: ['department_name'] },
+    ],
+    attributes: ['employee_id', 'first_name', 'last_name', 'full_name', 'employee_code', 'designation'],
+  });
+  for (const m of managers) seen.set(m.employee_id, m);
+
+  const { EmployeeRole } = require('../models');
+  const hrAdminRows = await EmployeeRole.findAll({
+    include: [
+      { model: Role, where: { role_code: 'HR_ADMIN' }, attributes: [] },
+      {
+        model: Employee,
+        attributes: ['employee_id', 'first_name', 'last_name', 'full_name', 'employee_code', 'designation'],
+        include: [{ model: Department, attributes: ['department_name'] }],
+      },
     ],
   });
-  const seen = new Map();
-  for (const row of rows) seen.set(row.Employee.employee_id, row.Employee);
+  for (const row of hrAdminRows) seen.set(row.Employee.employee_id, row.Employee);
+
   return [...seen.values()];
 }
 
-module.exports = { getDashboard, listEmployees, onboardEmployee, setReportingManager, getTeamBalances, getTeamCalendar, getPeerCalendar, listWatchableEmployees, isInManagerHierarchy };
+module.exports = { getDashboard, listEmployees, onboardEmployee, updateEmployeeDetails, setReportingManager, getTeamBalances, getTeamCalendar, getPeerCalendar, listWatchableEmployees, isInManagerHierarchy };

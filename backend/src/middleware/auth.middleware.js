@@ -5,7 +5,7 @@ const { Employee, EmployeeRole, Role } = require('../models');
 /**
  * LMS-002: application session is Claude's own JWT, issued after successful Entra
  * auth, valid until midnight local (configured tz). LMS-008: authorisation is
- * evaluated per request against the user's CURRENT role/hierarchy position — this
+ * evaluated per request against the user's CURRENT role assignment — this
  * middleware re-reads the employee + roles from the DB every request; it never
  * trusts role claims cached in the token itself.
  */

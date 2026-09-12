@@ -1,7 +1,61 @@
-import { useEffect, useState } from 'react';
-import { Eye, Plus } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Eye, Plus, ChevronDown, Check } from 'lucide-react';
 import { listStandingWatchers, addStandingWatcher, getWatchableEmployees } from '../../api/employees';
 import { GhostButton, PrimaryButton } from './GlassButton';
+
+/** Custom listbox instead of a native <select> — a plain <option> can't carry the
+ * bold-name / muted department+designation sub-text the watcher picker needs. */
+function WatcherPicker({ candidates, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const selected = candidates.find((c) => String(c.employee_id) === String(value));
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const handleClickOutside = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  return (
+    <div className="relative w-full" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="glass-input !py-1.5 !text-xs w-full flex items-center justify-between text-left"
+      >
+        <span className={selected ? 'text-slate-100' : 'text-slate-500'}>
+          {selected ? selected.full_name : 'Watcher…'}
+        </span>
+        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-1 w-56 max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-slate-950/95 backdrop-blur-xl shadow-2xl py-1">
+          {candidates.map((c) => (
+            <button
+              key={c.employee_id}
+              type="button"
+              onClick={() => { onChange(c.employee_id); setOpen(false); }}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-white/[0.06] transition-colors"
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-100 truncate">{c.full_name}</p>
+                <p className="text-[10px] text-slate-500 truncate">
+                  {[c.Department?.department_name, c.designation].filter(Boolean).join(' · ') || 'No department on record'}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[9px] font-mono text-slate-600">#{c.employee_id}</span>
+                {String(value) === String(c.employee_id) && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function StandingWatcherControl({ employeeId, employeeName }) {
   const [open, setOpen] = useState(false);
@@ -22,6 +76,10 @@ export default function StandingWatcherControl({ employeeId, employeeName }) {
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!form.watcherEmployeeId) {
+      setError('Choose a watcher.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -44,7 +102,7 @@ export default function StandingWatcherControl({ employeeId, employeeName }) {
   }
 
   return (
-    <div className="mt-2 p-3 bg-white/[0.03] rounded-xl space-y-2 text-xs">
+    <div className="w-full p-3 bg-white/[0.03] rounded-xl space-y-2 text-xs">
       <p className="text-slate-400">Standing watchers on {employeeName}</p>
       {current.map((s) => (
         <div key={s.standing_watcher_id} className="text-slate-300 bg-white/[0.04] rounded-lg px-2.5 py-1.5">
@@ -52,11 +110,13 @@ export default function StandingWatcherControl({ employeeId, employeeName }) {
         </div>
       ))}
       <form onSubmit={submit} className="flex flex-wrap gap-1.5 items-center pt-1">
-        <select className="glass-input !py-1.5 !text-xs w-32" value={form.watcherEmployeeId}
-          onChange={(e) => setForm((f) => ({ ...f, watcherEmployeeId: e.target.value }))} required>
-          <option value="">Watcher…</option>
-          {candidates.map((c) => <option key={c.employee_id} value={c.employee_id}>{c.full_name}</option>)}
-        </select>
+        <div className="w-40">
+          <WatcherPicker
+            candidates={candidates}
+            value={form.watcherEmployeeId}
+            onChange={(id) => setForm((f) => ({ ...f, watcherEmployeeId: id }))}
+          />
+        </div>
         <input type="date" className="glass-input !py-1.5 !text-xs w-32" value={form.fromDate}
           onChange={(e) => setForm((f) => ({ ...f, fromDate: e.target.value }))} required />
         <input type="date" className="glass-input !py-1.5 !text-xs w-32" value={form.toDate}

@@ -1,7 +1,7 @@
 const { EmployeeRole, Role, Employee } = require('../models');
 const auditService = require('./audit.service');
 
-/** HR/Admin grants a role (MANAGER or HR_ADMIN) to an employee. Idempotent. */
+/** HR/Admin grants an explicit role (EMPLOYEE, MANAGER, or HR_ADMIN) to an employee. Idempotent. */
 async function assignRole(employeeId, roleCode, actorId) {
   const role = await Role.findOne({ where: { role_code: roleCode } });
   if (!role) throw Object.assign(new Error(`Unknown role code: ${roleCode}`), { status: 400, code: 'UNKNOWN_ROLE' });

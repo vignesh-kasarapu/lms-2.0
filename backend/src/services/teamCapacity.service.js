@@ -6,6 +6,15 @@ async function listForManager(managerEmployeeId) {
   return TeamCapacityLimit.findAll({ where: { manager_employee_id: managerEmployeeId }, order: [['effective_from', 'DESC']] });
 }
 
+/** Global admin-screen list — listForManager above is scoped to one manager (used at
+ * approval-time and by the Manager's own view); this is for the "all limits" admin table. */
+async function listAll() {
+  return TeamCapacityLimit.findAll({
+    include: [{ model: Employee, as: 'managerEmployee', attributes: ['first_name', 'last_name', 'full_name', 'employee_code'] }],
+    order: [['effective_from', 'DESC']],
+  });
+}
+
 async function createLimit({ managerEmployeeId, maxConcurrentOnLeave, effectiveFrom, effectiveTo }, actorId) {
   const limit = await TeamCapacityLimit.create({
     manager_employee_id: managerEmployeeId, max_concurrent_on_leave: maxConcurrentOnLeave,
@@ -13,6 +22,40 @@ async function createLimit({ managerEmployeeId, maxConcurrentOnLeave, effectiveF
   });
   await auditService.record({ actorId, action: 'TEAM_CAPACITY_LIMIT_CREATED', entityType: 'team_capacity_limits', entityId: limit.capacity_limit_id, newValue: { managerEmployeeId, maxConcurrentOnLeave, effectiveFrom, effectiveTo } });
   return limit;
+}
+
+async function updateLimit(capacityLimitId, { maxConcurrentOnLeave, effectiveFrom, effectiveTo }, actorId) {
+  const limit = await TeamCapacityLimit.findByPk(capacityLimitId);
+  if (!limit) throw Object.assign(new Error('Team capacity limit not found'), { status: 404, code: 'NOT_FOUND' });
+  const prior = { max_concurrent_on_leave: limit.max_concurrent_on_leave, effective_from: limit.effective_from, effective_to: limit.effective_to };
+
+  limit.max_concurrent_on_leave = maxConcurrentOnLeave ?? limit.max_concurrent_on_leave;
+  limit.effective_from = effectiveFrom ?? limit.effective_from;
+  limit.effective_to = effectiveTo !== undefined ? (effectiveTo || null) : limit.effective_to;
+  await limit.save();
+
+  await auditService.record({ actorId, action: 'TEAM_CAPACITY_LIMIT_UPDATED', entityType: 'team_capacity_limits', entityId: capacityLimitId, priorValue: prior, newValue: { maxConcurrentOnLeave, effectiveFrom, effectiveTo } });
+  return limit;
+}
+
+/** No is_active column exists on this model (unlike BlackoutPeriod) — "disabled" is
+ * represented as effective_to = today, so assertWithinCapacity naturally stops applying it
+ * going forward; "enabled" clears effective_to back to open-ended. */
+async function setActive(capacityLimitId, isActive, actorId) {
+  const limit = await TeamCapacityLimit.findByPk(capacityLimitId);
+  if (!limit) throw Object.assign(new Error('Team capacity limit not found'), { status: 404, code: 'NOT_FOUND' });
+  limit.effective_to = isActive ? null : new Date().toISOString().slice(0, 10);
+  await limit.save();
+  await auditService.record({ actorId, action: isActive ? 'TEAM_CAPACITY_LIMIT_ENABLED' : 'TEAM_CAPACITY_LIMIT_DISABLED', entityType: 'team_capacity_limits', entityId: capacityLimitId });
+  return limit;
+}
+
+async function removeLimit(capacityLimitId, actorId) {
+  const limit = await TeamCapacityLimit.findByPk(capacityLimitId);
+  if (!limit) throw Object.assign(new Error('Team capacity limit not found'), { status: 404, code: 'NOT_FOUND' });
+  await limit.destroy();
+  await auditService.record({ actorId, action: 'TEAM_CAPACITY_LIMIT_DELETED', entityType: 'team_capacity_limits', entityId: capacityLimitId });
+  return { deleted: true };
 }
 
 /**
@@ -57,4 +100,4 @@ async function assertWithinCapacity({ employeeId, startDate, endDate }) {
   }
 }
 
-module.exports = { listForManager, createLimit, assertWithinCapacity };
+module.exports = { listForManager, listAll, createLimit, updateLimit, setActive, removeLimit, assertWithinCapacity };

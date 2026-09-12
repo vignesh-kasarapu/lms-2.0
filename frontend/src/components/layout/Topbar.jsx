@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
+import { signOut } from '../../api/auth';
 import NotificationBell from '../common/NotificationBell';
 import { ShieldCheck, UserCheck, Sparkles, ChevronDown, LogOut, Mail, Briefcase, IdCard, X, Building, CheckCircle2, User, AlertTriangle } from 'lucide-react';
 
@@ -37,17 +38,26 @@ export default function Topbar({ title }) {
     };
   }, [isProfileOpen, showLogoutConfirm]);
 
-  const confirmAndLogout = () => {
-    localStorage.clear();
-    sessionStorage.clear();
-    window.location.reload();
+  const confirmAndLogout = async () => {
+    try {
+      // Clears the httpOnly session cookie server-side (LMS-007) — without this call the
+      // cookie survives a client-side reload and the same user is signed straight back in.
+      await signOut();
+    } catch {
+      // Proceed regardless (e.g. session already expired/invalid) — every user should still
+      // land back on the login page below, not get stuck.
+    } finally {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = '/login';
+    }
   };
 
   const emp = user?.employee || {};
   const initials = emp.full_name?.slice(0, 2).toUpperCase() || 'EX';
 
   return (
-    <header className="glass-panel flex items-center justify-between px-6 py-4 mb-6 relative z-40">
+    <header className="glass-panel flex items-center justify-between px-6 py-4 mb-6 sticky top-0 z-40">
       <div className="flex items-center gap-3.5">
         <h1 className="text-2xl font-display font-extrabold text-white tracking-tight">{title}</h1>
         {isHrAdmin ? (

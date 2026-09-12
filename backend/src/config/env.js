@@ -38,6 +38,7 @@ const env = {
     employeeCode: required('DEV_AUTH_BYPASS_EMPLOYEE_CODE'),
   },
 
+  // Exchange Online OAuth2 client-credentials (kept for when it's wired back up — currently unused).
   smtp: {
     host: required('SMTP_HOST'),
     port: parseInt(required('SMTP_PORT', '587'), 10),
@@ -45,6 +46,14 @@ const env = {
     clientId: required('SMTP_CLIENT_ID'),
     clientSecret: required('SMTP_CLIENT_SECRET'),
     fromAddress: required('SMTP_FROM_ADDRESS'),
+  },
+
+  // Basic-auth SMTP (e.g. Gmail with an app password) — what mailer.js actually sends through right now.
+  mail: {
+    host: required('MAIL_HOST'),
+    port: parseInt(required('MAIL_PORT', '587'), 10),
+    user: required('MAIL_USERNAME'),
+    password: required('MAIL_PASSWORD'),
   },
 
   defaults: {

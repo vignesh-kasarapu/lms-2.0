@@ -98,7 +98,7 @@ async function wouldCreateCircularHierarchy(employeeId, proposedManagerId) {
   return false;
 }
 
-/** Explicit role check per Addendum override: Manager role is assigned via employee_roles, not derived. */
+/** EMPLOYEE/MANAGER/HR_ADMIN are all explicit grants checked via employee_roles. */
 async function hasRole(employeeId, roleCode) {
   const count = await EmployeeRole.count({
     include: [{ model: Role, where: { role_code: roleCode }, attributes: [] }],

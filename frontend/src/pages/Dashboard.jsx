@@ -8,7 +8,6 @@ import StatusBadge from '../components/common/StatusBadge';
 import { PrimaryButton, GhostButton } from '../components/common/GlassButton';
 import Topbar from '../components/layout/Topbar';
 import EmptyState from '../components/common/EmptyState';
-import CalendarFeedCard from '../components/common/CalendarFeedCard';
 import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
@@ -38,7 +37,7 @@ export default function Dashboard() {
               <Sparkles className="w-3.5 h-3.5" /> Workspace Overview
             </div>
             <h2 className="text-2xl sm:text-3xl font-display font-extrabold text-white">
-              Good day, {firstName}! 👋
+              Good day, {firstName}!
             </h2>
             <p className="text-sm text-slate-300 mt-1 max-w-xl">
               Track your leave balances, view upcoming scheduled time off, and manage your leave requests smoothly.
@@ -179,10 +178,6 @@ export default function Dashboard() {
             </div>
           )}
         </GlassCard>
-      </div>
-
-      <div className="mt-6">
-        <CalendarFeedCard />
       </div>
     </>
   );

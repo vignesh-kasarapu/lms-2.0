@@ -1,7 +1,24 @@
 const { eachDayOfInterval, format, getDay } = require('date-fns');
-const { Holiday, LeaveYear } = require('../models');
+const { Op } = require('sequelize');
+const { Holiday, LeaveYear, Employee } = require('../models');
 const configService = require('./config.service');
 const workingPatternService = require('./workingPattern.service');
+
+/** Holidays scoped to the employee's region (or org-wide, region_id null) — a regional
+ * holiday only deducts/displays for employees working in that region. */
+async function findHolidaysForEmployee(leaveYearId, employeeId) {
+  let employeeRegionId = null;
+  if (employeeId) {
+    const employee = await Employee.findByPk(employeeId, { attributes: ['region_id'] });
+    employeeRegionId = employee ? employee.region_id : null;
+  }
+  return Holiday.findAll({
+    where: {
+      leave_year_id: leaveYearId,
+      [Op.or]: employeeRegionId ? [{ region_id: null }, { region_id: employeeRegionId }] : [{ region_id: null }],
+    },
+  });
+}
 
 const WEEKDAY_CODES = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -23,7 +40,7 @@ async function computeDeductionBreakdown({ startDate, endDate, isHalfDay, leaveY
     configService.get('holiday.count_within_leave'),
   ]);
 
-  const holidays = await Holiday.findAll({ where: { leave_year_id: leaveYearId } });
+  const holidays = await findHolidaysForEmployee(leaveYearId, employeeId);
   const holidayDates = new Set(holidays.map((h) => h.holiday_date));
   const holidayNameByDate = Object.fromEntries(holidays.map((h) => [h.holiday_date, h.holiday_name]));
 

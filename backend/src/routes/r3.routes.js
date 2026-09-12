@@ -7,11 +7,18 @@ const router = express.Router();
 // Blackout periods — HR/Admin manages, everyone can read (so Apply screen can warn/block).
 router.get('/blackout-periods', requireAuth, controller.blackout.list);
 router.post('/blackout-periods', requireAuth, requireRole('HR_ADMIN'), controller.blackout.create);
+router.patch('/blackout-periods/:blackoutId', requireAuth, requireRole('HR_ADMIN'), controller.blackout.update);
+router.patch('/blackout-periods/:blackoutId/active', requireAuth, requireRole('HR_ADMIN'), controller.blackout.setActive);
 router.post('/blackout-periods/:blackoutId/deactivate', requireAuth, requireRole('HR_ADMIN'), controller.blackout.deactivate);
+router.delete('/blackout-periods/:blackoutId', requireAuth, requireRole('HR_ADMIN'), controller.blackout.remove);
 
 // Team capacity limits — HR/Admin only.
+router.get('/team-capacity-limits', requireAuth, requireRole('HR_ADMIN'), controller.capacity.listAll);
 router.get('/team-capacity-limits/:managerId', requireAuth, requireRole('HR_ADMIN', 'MANAGER'), controller.capacity.listForManager);
 router.post('/team-capacity-limits', requireAuth, requireRole('HR_ADMIN'), controller.capacity.create);
+router.patch('/team-capacity-limits/:capacityLimitId', requireAuth, requireRole('HR_ADMIN'), controller.capacity.update);
+router.patch('/team-capacity-limits/:capacityLimitId/active', requireAuth, requireRole('HR_ADMIN'), controller.capacity.setActive);
+router.delete('/team-capacity-limits/:capacityLimitId', requireAuth, requireRole('HR_ADMIN'), controller.capacity.remove);
 
 // Leave encashment — HR/Admin initiates, employee views own.
 router.post('/leave-encashment', requireAuth, requireRole('HR_ADMIN'), controller.encashment.create);

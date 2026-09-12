@@ -12,6 +12,7 @@ import NotificationTemplateAdmin from '../components/admin/NotificationTemplateA
 import CapacityAdmin from '../components/admin/CapacityAdmin';
 import BalanceExtrasAdmin from '../components/admin/BalanceExtrasAdmin';
 import BalanceAdjustmentAdmin from '../components/admin/BalanceAdjustmentAdmin';
+import LedgerAdmin from '../components/admin/LedgerAdmin';
 import { getDashboard } from '../api/employees';
 
 export default function Administration() {
@@ -29,7 +30,7 @@ export default function Administration() {
     employees: { label: 'Employees', content: <EmployeeAdmin /> },
     'leave-types': { label: 'Leave types & policy', content: <LeaveTypeAdmin /> },
     holidays: { label: 'Holiday calendar', content: <HolidayAdmin leaveYearId={leaveYearId} /> },
-    'org-config': { label: 'Organisation', content: <OrgConfigAdmin /> },
+    'org-config': { label: 'Settings', content: <OrgConfigAdmin /> },
     'self-approval': { label: 'Self-approval', content: <SelfApprovalAdmin /> },
     'working-patterns': { label: 'Working patterns', content: <WorkingPatternAdmin /> },
     templates: { label: 'Notification templates', content: <NotificationTemplateAdmin /> },
@@ -38,6 +39,7 @@ export default function Administration() {
     'balance-adjustment': { label: 'Balance adjustment', content: <BalanceAdjustmentAdmin /> },
     reports: { label: 'Reports', content: <ReportsAdmin /> },
     audit: { label: 'Audit log', content: <AuditLogAdmin /> },
+    ledger: { label: 'Ledger', content: <LedgerAdmin /> },
   };
 
   const active = sections[activeSection] || sections.employees;

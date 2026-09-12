@@ -1,8 +1,42 @@
 const { Op } = require('sequelize');
-const { WorkingPattern, WorkingPatternAssignment } = require('../models');
+const { WorkingPattern, WorkingPatternAssignment, Employee } = require('../models');
 const auditService = require('./audit.service');
 
-async function listPatterns() { return WorkingPattern.findAll({ order: [['pattern_name', 'ASC']] }); }
+async function listPatterns() { return WorkingPattern.findAll({ where: { is_active: true }, order: [['pattern_name', 'ASC']] }); }
+
+async function listAssignments() {
+  return WorkingPatternAssignment.findAll({
+    include: [
+      { model: Employee, attributes: ['employee_id', 'first_name', 'last_name', 'employee_code'] },
+      { model: WorkingPattern, attributes: ['working_pattern_id', 'pattern_name', 'pattern_code'] },
+    ],
+    order: [['effective_from', 'DESC']],
+  });
+}
+
+/** Soft-delete: existing WorkingPatternAssignment rows reference this pattern by FK, so a
+ * hard delete would either cascade-destroy history or fail outright — deactivating instead
+ * just removes it from future selection (matches the BlackoutPeriod deactivate idiom).
+ * Refused outright while any employee (past, present, or future-dated) is assigned to it —
+ * reassign or end those assignments first, so a still-referenced pattern never silently
+ * disappears from the list out from under someone using it. */
+async function deactivatePattern(workingPatternId, actorId) {
+  const pattern = await WorkingPattern.findByPk(workingPatternId);
+  if (!pattern) throw Object.assign(new Error('Working pattern not found'), { status: 404, code: 'NOT_FOUND' });
+
+  const assignmentCount = await WorkingPatternAssignment.count({ where: { working_pattern_id: workingPatternId } });
+  if (assignmentCount > 0) {
+    throw Object.assign(
+      new Error(`This pattern is assigned to ${assignmentCount} employee(s) and cannot be deleted. Reassign or end those assignments first.`),
+      { status: 400, code: 'WORKING_PATTERN_IN_USE' },
+    );
+  }
+
+  pattern.is_active = false;
+  await pattern.save();
+  await auditService.record({ actorId, action: 'WORKING_PATTERN_DEACTIVATED', entityType: 'working_patterns', entityId: workingPatternId });
+  return { deactivated: true };
+}
 
 async function createPattern({ patternCode, patternName, weekendDays }, actorId) {
   const pattern = await WorkingPattern.create({
@@ -10,6 +44,23 @@ async function createPattern({ patternCode, patternName, weekendDays }, actorId)
   });
   await auditService.record({ actorId, action: 'WORKING_PATTERN_CREATED', entityType: 'working_patterns', entityId: pattern.working_pattern_id, newValue: { patternCode, patternName, weekendDays } });
   return pattern;
+}
+
+/** LMS-015: exactly one working pattern is active for an employee on any given date. */
+function assertNoOverlap(existing, newFrom, newTo) {
+  const overlaps = existing.some((a) => {
+    const aFrom = new Date(a.effective_from);
+    const aTo = a.effective_to ? new Date(a.effective_to) : null;
+    const startsBeforeOtherEnds = !aTo || newFrom <= aTo;
+    const endsAfterOtherStarts = !newTo || newTo >= aFrom;
+    return startsBeforeOtherEnds && endsAfterOtherStarts;
+  });
+  if (overlaps) {
+    throw Object.assign(
+      new Error('This employee already has a working pattern assignment covering part of this date range. Patterns may not overlap.'),
+      { status: 400, code: 'WORKING_PATTERN_OVERLAP' },
+    );
+  }
 }
 
 /**
@@ -21,24 +72,7 @@ async function createPattern({ patternCode, patternName, weekendDays }, actorId)
  */
 async function assignPattern({ employeeId, workingPatternId, effectiveFrom, effectiveTo, assignedBy }) {
   const existing = await WorkingPatternAssignment.findAll({ where: { employee_id: employeeId } });
-
-  const newFrom = new Date(effectiveFrom);
-  const newTo = effectiveTo ? new Date(effectiveTo) : null;
-
-  const overlaps = existing.some((a) => {
-    const aFrom = new Date(a.effective_from);
-    const aTo = a.effective_to ? new Date(a.effective_to) : null;
-    const startsBeforeOtherEnds = !aTo || newFrom <= aTo;
-    const endsAfterOtherStarts = !newTo || newTo >= aFrom;
-    return startsBeforeOtherEnds && endsAfterOtherStarts;
-  });
-
-  if (overlaps) {
-    throw Object.assign(
-      new Error('This employee already has a working pattern assignment covering part of this date range. Patterns may not overlap.'),
-      { status: 400, code: 'WORKING_PATTERN_OVERLAP' },
-    );
-  }
+  assertNoOverlap(existing, new Date(effectiveFrom), effectiveTo ? new Date(effectiveTo) : null);
 
   const assignment = await WorkingPatternAssignment.create({
     employee_id: employeeId, working_pattern_id: workingPatternId,
@@ -46,6 +80,34 @@ async function assignPattern({ employeeId, workingPatternId, effectiveFrom, effe
   });
 
   await auditService.record({ actorId: assignedBy, action: 'WORKING_PATTERN_ASSIGNED', entityType: 'working_pattern_assignments', entityId: assignment.assignment_id, newValue: { employeeId, workingPatternId, effectiveFrom, effectiveTo } });
+  return assignment;
+}
+
+/** HR edits an existing assignment's pattern and/or date range, re-checking the same
+ * no-overlap rule against this employee's other assignments (excluding itself). */
+async function updateAssignment(assignmentId, { workingPatternId, effectiveFrom, effectiveTo }, actorId) {
+  const assignment = await WorkingPatternAssignment.findByPk(assignmentId);
+  if (!assignment) throw Object.assign(new Error('Assignment not found'), { status: 404, code: 'NOT_FOUND' });
+
+  const newFrom = effectiveFrom !== undefined ? new Date(effectiveFrom) : new Date(assignment.effective_from);
+  const newToRaw = effectiveTo !== undefined ? effectiveTo : assignment.effective_to;
+  const newTo = newToRaw ? new Date(newToRaw) : null;
+
+  const existing = await WorkingPatternAssignment.findAll({
+    where: { employee_id: assignment.employee_id, assignment_id: { [Op.ne]: assignmentId } },
+  });
+  assertNoOverlap(existing, newFrom, newTo);
+
+  const priorValue = { working_pattern_id: assignment.working_pattern_id, effective_from: assignment.effective_from, effective_to: assignment.effective_to };
+  if (workingPatternId !== undefined) assignment.working_pattern_id = workingPatternId;
+  if (effectiveFrom !== undefined) assignment.effective_from = effectiveFrom;
+  if (effectiveTo !== undefined) assignment.effective_to = effectiveTo || null;
+  await assignment.save();
+
+  await auditService.record({
+    actorId, action: 'WORKING_PATTERN_ASSIGNMENT_UPDATED', entityType: 'working_pattern_assignments', entityId: assignmentId,
+    priorValue, newValue: { workingPatternId, effectiveFrom, effectiveTo },
+  });
   return assignment;
 }
 
@@ -67,4 +129,4 @@ async function getWeekendOverrideForDate(employeeId, isoDate) {
   return JSON.parse(assignment.WorkingPattern.weekend_days);
 }
 
-module.exports = { listPatterns, createPattern, assignPattern, getWeekendOverrideForDate };
+module.exports = { listPatterns, listAssignments, createPattern, assignPattern, updateAssignment, getWeekendOverrideForDate, deactivatePattern };

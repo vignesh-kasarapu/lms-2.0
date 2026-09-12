@@ -27,7 +27,6 @@ const ADMIN_SECTIONS = [
   ['employees', 'Employees'],
   ['leave-types', 'Leave types & policy'],
   ['holidays', 'Holiday calendar'],
-  ['org-config', 'Organisation'],
   ['self-approval', 'Self-approval'],
   ['working-patterns', 'Working patterns'],
   ['templates', 'Notification templates'],
@@ -36,6 +35,8 @@ const ADMIN_SECTIONS = [
   ['balance-adjustment', 'Balance adjustment'],
   ['reports', 'Reports'],
   ['audit', 'Audit log'],
+  ['ledger', 'Ledger'],
+  ['org-config', 'Settings'],
 ];
 
 export default function Sidebar() {

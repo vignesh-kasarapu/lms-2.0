@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Users, Search, UserCheck, Shield, Sparkles, Award } from 'lucide-react';
+import { Users, Search } from 'lucide-react';
 import { getMyTeam } from '../api/employees';
 import GlassCard from '../components/common/GlassCard';
 import EmptyState from '../components/common/EmptyState';
+import Table from '../components/common/Table';
 import StandingWatcherControl from '../components/common/StandingWatcherControl';
 import Topbar from '../components/layout/Topbar';
+
+const COLUMNS = [
+  { label: 'Employee' },
+  { label: 'Designation' },
+  { label: 'Balances' },
+  { label: 'Standing Watcher' },
+];
 
 export default function MyTeam() {
   const [team, setTeam] = useState([]);
@@ -69,9 +77,9 @@ export default function MyTeam() {
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="space-y-2">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="h-48 rounded-2xl glass-panel animate-pulse p-4 space-y-3" />
+            <div key={i} className="h-14 rounded-xl glass-panel animate-pulse" />
           ))}
         </div>
       ) : !filteredTeam.length ? (
@@ -83,77 +91,47 @@ export default function MyTeam() {
           />
         </GlassCard>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <Table columns={COLUMNS}>
           {filteredTeam.map(({ employee, balances }) => {
             const initials = employee.full_name?.slice(0, 2).toUpperCase() || 'EMP';
             return (
-              <div
-                key={employee.employee_id}
-                className="glass-panel p-5 rounded-2xl border border-white/10 hover:border-emerald-500/40 transition-all duration-200 hover:shadow-xl hover:shadow-emerald-500/10 flex flex-col justify-between"
-              >
-                <div>
-                  {/* Team Member Card Header */}
-                  <div className="flex items-start justify-between gap-3 pb-3 border-b border-white/10">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white font-black text-sm flex items-center justify-center shadow-md shadow-emerald-500/20 border border-emerald-400/30">
-                        {initials}
-                      </div>
-                      <div>
-                        <h3 className="font-display font-bold text-slate-100 text-base leading-snug">
-                          {employee.full_name}
-                        </h3>
-                        <p className="text-xs text-emerald-400 font-medium">
-                          {employee.designation || 'Team Member'}
-                        </p>
-                      </div>
+              <tr key={employee.employee_id} className="hover:bg-white/[0.03] transition-colors">
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white font-black text-xs flex items-center justify-center shadow-md shadow-emerald-500/20 border border-emerald-400/30 shrink-0">
+                      {initials}
                     </div>
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white/5 text-slate-400 border border-white/10">
-                      ID #{employee.employee_id}
-                    </span>
-                  </div>
-
-                  {/* Leave Balances Section - All Fields in Right & Green */}
-                  <div className="py-3">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
-                      <span>Available Balances</span>
-                      <span className="text-emerald-400 text-[10px]">Effective Days</span>
-                    </p>
-
-                    <div className="grid grid-cols-3 gap-2">
-                      {balances.map((b) => (
-                        <div
-                          key={b.leaveType}
-                          className="bg-emerald-950/20 border border-emerald-500/20 p-2 rounded-xl text-center hover:border-emerald-500/40 transition-colors"
-                        >
-                          <p className="text-[10px] text-emerald-300 font-semibold truncate">
-                            {b.leaveType}
-                          </p>
-                          <p
-                            className={`text-sm font-extrabold mt-0.5 ${
-                              b.effectiveBalance < 0
-                                ? 'text-status-advance font-black'
-                                : 'text-emerald-400'
-                            }`}
-                          >
-                            {b.effectiveBalance.toFixed(1)}
-                          </p>
-                        </div>
-                      ))}
+                    <div>
+                      <p className="font-display font-bold text-slate-100 text-sm leading-snug">{employee.full_name}</p>
+                      <p className="text-[10px] font-mono text-slate-500">ID #{employee.employee_id}</p>
                     </div>
                   </div>
-                </div>
-
-                {/* Standing Watcher Control Footer */}
-                <div className="pt-3 border-t border-white/10">
-                  <StandingWatcherControl
-                    employeeId={employee.employee_id}
-                    employeeName={employee.full_name}
-                  />
-                </div>
-              </div>
+                </td>
+                <td className="px-4 py-3 text-xs text-emerald-400 font-medium whitespace-nowrap">
+                  {employee.designation || 'Team Member'}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap gap-1.5 max-w-xs">
+                    {balances.map((b) => (
+                      <span
+                        key={b.leaveType}
+                        className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-emerald-950/20 border border-emerald-500/20 text-emerald-300 whitespace-nowrap"
+                      >
+                        {b.leaveType}:{' '}
+                        <strong className={b.effectiveBalance < 0 ? 'text-status-advance' : 'text-emerald-200'}>
+                          {b.effectiveBalance.toFixed(1)}
+                        </strong>
+                      </span>
+                    ))}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <StandingWatcherControl employeeId={employee.employee_id} employeeName={employee.full_name} />
+                </td>
+              </tr>
             );
           })}
-        </div>
+        </Table>
       )}
     </>
   );

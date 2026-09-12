@@ -2,8 +2,10 @@ const { Op } = require('sequelize');
 const { BlackoutPeriod } = require('../models');
 const auditService = require('./audit.service');
 
-async function listBlackoutPeriods() {
-  return BlackoutPeriod.findAll({ where: { is_active: true }, order: [['start_date', 'ASC']] });
+/** `includeInactive` is admin-screen-only — every business-logic caller (blackout
+ * conflict checks) must keep seeing active periods only. */
+async function listBlackoutPeriods({ includeInactive = false } = {}) {
+  return BlackoutPeriod.findAll({ where: includeInactive ? {} : { is_active: true }, order: [['start_date', 'ASC']] });
 }
 
 async function createBlackoutPeriod({ name, startDate, endDate, leaveTypeId }, actorId) {
@@ -14,13 +16,39 @@ async function createBlackoutPeriod({ name, startDate, endDate, leaveTypeId }, a
   return period;
 }
 
-async function deactivate(blackoutId, actorId) {
+async function updateBlackoutPeriod(blackoutId, { name, startDate, endDate, leaveTypeId }, actorId) {
   const period = await BlackoutPeriod.findByPk(blackoutId);
   if (!period) throw Object.assign(new Error('Blackout period not found'), { status: 404, code: 'NOT_FOUND' });
-  period.is_active = false;
+  const prior = { name: period.name, start_date: period.start_date, end_date: period.end_date, leave_type_id: period.leave_type_id };
+
+  period.name = name ?? period.name;
+  period.start_date = startDate ?? period.start_date;
+  period.end_date = endDate ?? period.end_date;
+  period.leave_type_id = leaveTypeId !== undefined ? (leaveTypeId || null) : period.leave_type_id;
   await period.save();
-  await auditService.record({ actorId, action: 'BLACKOUT_PERIOD_DEACTIVATED', entityType: 'blackout_periods', entityId: blackoutId });
+
+  await auditService.record({ actorId, action: 'BLACKOUT_PERIOD_UPDATED', entityType: 'blackout_periods', entityId: blackoutId, priorValue: prior, newValue: { name, startDate, endDate, leaveTypeId } });
   return period;
+}
+
+async function setActive(blackoutId, isActive, actorId) {
+  const period = await BlackoutPeriod.findByPk(blackoutId);
+  if (!period) throw Object.assign(new Error('Blackout period not found'), { status: 404, code: 'NOT_FOUND' });
+  period.is_active = isActive;
+  await period.save();
+  await auditService.record({ actorId, action: isActive ? 'BLACKOUT_PERIOD_REACTIVATED' : 'BLACKOUT_PERIOD_DEACTIVATED', entityType: 'blackout_periods', entityId: blackoutId });
+  return period;
+}
+
+// Kept for backward compatibility with existing callers — same as setActive(id, false, actorId).
+async function deactivate(blackoutId, actorId) { return setActive(blackoutId, false, actorId); }
+
+async function removeBlackoutPeriod(blackoutId, actorId) {
+  const period = await BlackoutPeriod.findByPk(blackoutId);
+  if (!period) throw Object.assign(new Error('Blackout period not found'), { status: 404, code: 'NOT_FOUND' });
+  await period.destroy();
+  await auditService.record({ actorId, action: 'BLACKOUT_PERIOD_DELETED', entityType: 'blackout_periods', entityId: blackoutId, priorValue: { name: period.name } });
+  return { deleted: true };
 }
 
 /**
@@ -46,4 +74,7 @@ async function assertNoBlackoutConflict({ leaveTypeId, startDate, endDate }) {
   }
 }
 
-module.exports = { listBlackoutPeriods, createBlackoutPeriod, deactivate, assertNoBlackoutConflict };
+module.exports = {
+  listBlackoutPeriods, createBlackoutPeriod, updateBlackoutPeriod, setActive, deactivate,
+  removeBlackoutPeriod, assertNoBlackoutConflict,
+};

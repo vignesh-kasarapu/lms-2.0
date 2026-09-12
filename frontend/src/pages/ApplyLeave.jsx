@@ -5,6 +5,7 @@ import { AlertTriangle, CalendarDays, Paperclip, Sparkles, CheckCircle2, FileTex
 import { previewApplication, submitRequest, saveDraft } from '../api/leaveRequests';
 import { getDashboard } from '../api/employees';
 import { uploadAttachment } from '../api/attachments';
+import { celebrate } from '../utils/celebrate';
 import GlassCard from '../components/common/GlassCard';
 import { PrimaryButton, GhostButton } from '../components/common/GlassButton';
 import Topbar from '../components/layout/Topbar';
@@ -70,6 +71,7 @@ export default function ApplyLeave() {
       if (file && selectedType?.attachments) {
         await uploadAttachment(res.data.request_id, file).catch((err) => setError(`Request submitted, but attachment failed: ${err.message}`));
       }
+      celebrate();
       navigate('/my-requests');
     } catch (err) {
       setError(err.message);
@@ -240,20 +242,16 @@ export default function ApplyLeave() {
                       {preview.deductedWorkingDays}
                       <span className="text-xs font-medium text-slate-400 ml-1">day(s)</span>
                     </p>
-                    <p className="text-[11px] text-slate-400 mt-2">
-                      {preview.calendarDaysSelected} calendar day(s) selected
-                    </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <StatRow label="Accrued Balance" value={`${preview.ledgerBalance} days`} />
-                    <StatRow label="In Review" value={`${preview.committedToOpenRequests} days`} />
-                    <StatRow label="Effective Balance" value={`${preview.effectiveBalance} days`} />
-                    <StatRow
-                      label="Balance After Leave"
-                      value={`${preview.projectedBalance} days`}
-                      highlight={preview.projectedBalance < 0}
-                    />
+                  <div className="bg-white/[0.03] rounded-xl px-4 py-3 border border-white/5 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-slate-400">Balance After This Leave</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{preview.effectiveBalance} day(s) available now</p>
+                    </div>
+                    <p className={`text-xl font-extrabold ${preview.projectedBalance < 0 ? 'text-status-advance' : 'text-slate-100'}`}>
+                      {preview.projectedBalance}
+                    </p>
                   </div>
 
                   {preview.isAdvanceLeave && (
@@ -271,14 +269,5 @@ export default function ApplyLeave() {
         </div>
       </div>
     </>
-  );
-}
-
-function StatRow({ label, value, highlight }) {
-  return (
-    <div className="bg-white/[0.03] rounded-xl px-3 py-2.5 border border-white/5">
-      <p className="text-[10px] uppercase font-bold text-slate-400">{label}</p>
-      <p className={`text-sm font-extrabold mt-0.5 ${highlight ? 'text-status-advance' : 'text-slate-100'}`}>{value}</p>
-    </div>
   );
 }

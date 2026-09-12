@@ -12,7 +12,7 @@ const CONFIG_DEFAULTS = {
   'timezone': { value: 'Asia/Kolkata', type: 'STRING' },
   'approval.long_leave_threshold_days': { value: '10', type: 'INT' },    // BR-23
   'approval.sla_working_days': { value: '3', type: 'INT' },              // BR-33
-  'approval.sla_reminder_pct': { value: '75', type: 'INT' },             // BR-34
+  'approval.sla_reminder_days_before': { value: '1', type: 'INT' },      // BR-34: reminder fires this many days before the SLA deadline
   'backdating.window_days': { value: '30', type: 'INT' },                // BR-27
   'advance_leave.withdrawal_window_days': { value: '7', type: 'INT' },   // BR-18
   'sick_leave.alert_threshold_days': { value: '3', type: 'INT' },        // BR-43

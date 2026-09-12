@@ -1,15 +1,23 @@
 const {
-  Department, Grade, Project, ProjectAssignment, LeaveType, LeavePolicy, LeaveAccrualConfig, ManagementLevel,
+  Department, Grade, Region, Project, ProjectAssignment, LeaveType, LeavePolicy, LeaveAccrualConfig, ManagementLevel,
   Holiday, LeaveYear, LeaveRequest,
 } = require('../models');
 const auditService = require('./audit.service');
 
-// ---- Departments / Grades / Projects: simple masters, no hardcoded values anywhere else ----
+// ---- Departments / Grades / Regions / Projects: simple masters, no hardcoded values anywhere else ----
 async function listDepartments() { return Department.findAll({ order: [['department_name', 'ASC']] }); }
 async function listManagementLevels() { return ManagementLevel.findAll({ where: { is_active: true }, order: [['level_rank', 'ASC']] }); }
 async function createDepartment(payload, actorId) {
   const row = await Department.create({ department_code: payload.code, department_name: payload.name });
   await auditService.record({ actorId, action: 'DEPARTMENT_CREATED', entityType: 'departments', entityId: row.department_id, newValue: payload });
+  return row;
+}
+
+// "Region of working" — filters which holidays apply to an employee (Phase 7).
+async function listRegions() { return Region.findAll({ where: { is_active: true }, order: [['region_name', 'ASC']] }); }
+async function createRegion(payload, actorId) {
+  const row = await Region.create({ region_code: payload.code, region_name: payload.name });
+  await auditService.record({ actorId, action: 'REGION_CREATED', entityType: 'regions', entityId: row.region_id, newValue: payload });
   return row;
 }
 
@@ -74,28 +82,52 @@ async function createLeaveType(payload, actorId) {
 
 async function updateLeaveTypePolicy(leaveTypeId, payload, actorId) {
   const leaveType = await LeaveType.findByPk(leaveTypeId);
+  if (!leaveType) throw Object.assign(new Error('Leave type not found'), { status: 404, code: 'NOT_FOUND' });
   if (leaveType.is_system) {
     throw Object.assign(new Error('The system LOP type cannot be edited or deleted (LMS-025).'), { status: 400, code: 'SYSTEM_TYPE_LOCKED' });
   }
+  // Some leave types (e.g. Compensatory Off) have no LeavePolicy row at all — entitlement/
+  // carry-forward edits are meaningless for those, but is_selectable_by_employee still lives
+  // on LeaveType itself, so enable/disable must keep working regardless.
   const policy = await LeavePolicy.findOne({ where: { leave_type_id: leaveTypeId } });
-  const prior = { annual_entitlement: policy.annual_entitlement, carries_forward: policy.carries_forward, carry_forward_cap: policy.carry_forward_cap };
+  const prior = {
+    annual_entitlement: policy?.annual_entitlement,
+    carries_forward: policy?.carries_forward,
+    carry_forward_cap: policy?.carry_forward_cap,
+    is_selectable_by_employee: leaveType.is_selectable_by_employee,
+  };
 
-  policy.annual_entitlement = payload.annualEntitlement ?? policy.annual_entitlement;
-  policy.carries_forward = payload.carriesForward ?? policy.carries_forward;
-  policy.carry_forward_cap = payload.carryForwardCap ?? policy.carry_forward_cap;
-  policy.updated_by = actorId;
-  await policy.save();
+  if (policy) {
+    policy.annual_entitlement = payload.annualEntitlement ?? policy.annual_entitlement;
+    policy.carries_forward = payload.carriesForward ?? policy.carries_forward;
+    policy.carry_forward_cap = payload.carryForwardCap ?? policy.carry_forward_cap;
+    policy.updated_by = actorId;
+    await policy.save();
+  }
 
-  await auditService.record({ actorId, action: 'LEAVE_POLICY_UPDATED', entityType: 'leave_policies', entityId: policy.policy_id, priorValue: prior, newValue: payload });
-  return policy;
+  // Whether employees can apply for this type at all — independent of the policy numbers above.
+  if (payload.isSelectableByEmployee !== undefined) {
+    leaveType.is_selectable_by_employee = payload.isSelectableByEmployee;
+    await leaveType.save();
+  }
+
+  await auditService.record({ actorId, action: 'LEAVE_POLICY_UPDATED', entityType: 'leave_policies', entityId: policy?.policy_id ?? leaveType.leave_type_id, priorValue: prior, newValue: payload });
+  return policy || leaveType;
 }
 
 // ---- Holiday calendar (LMS-028) ----
-async function listHolidays(leaveYearId) { return Holiday.findAll({ where: { leave_year_id: leaveYearId }, order: [['holiday_date', 'ASC']] }); }
+async function listHolidays(leaveYearId) {
+  return Holiday.findAll({
+    where: { leave_year_id: leaveYearId },
+    include: [{ model: Region, attributes: ['region_name'] }],
+    order: [['holiday_date', 'ASC']],
+  });
+}
 
 async function addHoliday(payload, actorId) {
   const holiday = await Holiday.create({
-    holiday_date: payload.date, holiday_name: payload.name, leave_year_id: payload.leaveYearId, created_by: actorId,
+    holiday_date: payload.date, holiday_name: payload.name, leave_year_id: payload.leaveYearId,
+    region_id: payload.regionId || null, created_by: actorId,
   });
 
   // 7.3.15: warn where a holiday is added inside an already-approved leave span.
@@ -116,6 +148,7 @@ async function removeHoliday(holidayId, actorId) {
 }
 
 module.exports = {
-  listDepartments, listManagementLevels, createDepartment, listGrades, createGrade, listProjects, createProject, assignProject,
+  listDepartments, listManagementLevels, createDepartment, listGrades, createGrade,
+  listRegions, createRegion, listProjects, createProject, assignProject,
   listLeaveTypes, createLeaveType, updateLeaveTypePolicy, listHolidays, addHoliday, removeHoliday,
 };

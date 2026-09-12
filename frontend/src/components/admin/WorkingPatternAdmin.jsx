@@ -1,26 +1,55 @@
 import { useEffect, useState } from 'react';
-import { CalendarRange } from 'lucide-react';
-import { listWorkingPatterns, createWorkingPattern, assignWorkingPattern } from '../../api/admin';
+import { CalendarRange, Trash2, Users } from 'lucide-react';
+import {
+  listWorkingPatterns, createWorkingPattern, deactivateWorkingPattern, assignWorkingPattern,
+  listWorkingPatternAssignments, updateWorkingPatternAssignment,
+} from '../../api/admin';
 import { listEmployees } from '../../api/employees';
 import GlassCard from '../common/GlassCard';
+import Modal from '../common/Modal';
 import { PrimaryButton } from '../common/GlassButton';
 
 const WEEKDAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
+function assignmentStatus(a) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (a.effective_from > today) return { label: 'Upcoming', className: 'text-status-info border-status-info/30 bg-status-info/10' };
+  if (a.effective_to && a.effective_to < today) return { label: 'Ended', className: 'text-slate-400 border-slate-500/30 bg-slate-500/10' };
+  return { label: 'Active', className: 'text-status-approved border-status-approved/30 bg-status-approved/10' };
+}
+
 export default function WorkingPatternAdmin() {
   const [patterns, setPatterns] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [assignments, setAssignments] = useState([]);
   const [patternForm, setPatternForm] = useState({ patternCode: '', patternName: '', weekendDays: [] });
   const [assignForm, setAssignForm] = useState({ employeeId: '', workingPatternId: '', effectiveFrom: '', effectiveTo: '' });
   const [savingPattern, setSavingPattern] = useState(false);
   const [savingAssign, setSavingAssign] = useState(false);
   const [assignError, setAssignError] = useState(null);
+  const [editingAssignment, setEditingAssignment] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
 
   const load = () => {
     listWorkingPatterns().then((res) => setPatterns(res.data));
     listEmployees().then((res) => setEmployees(res.data));
+    listWorkingPatternAssignments().then((res) => setAssignments(res.data));
   };
   useEffect(() => { load(); }, []);
+
+  const deletePattern = async (patternId) => {
+    setDeleteError(null);
+    setDeletingId(patternId);
+    try {
+      await deactivateWorkingPattern(patternId);
+      load();
+    } catch (err) {
+      setDeleteError(err.message); // e.g. "assigned to N employee(s)" refusal
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const toggleDay = (day) => {
     setPatternForm((f) => ({
@@ -48,6 +77,7 @@ export default function WorkingPatternAdmin() {
     try {
       await assignWorkingPattern(assignForm);
       setAssignForm({ employeeId: '', workingPatternId: '', effectiveFrom: '', effectiveTo: '' });
+      listWorkingPatternAssignments().then((res) => setAssignments(res.data));
     } catch (err) {
       setAssignError(err.message); // e.g. overlap refusal (LMS-015)
     } finally {
@@ -83,11 +113,22 @@ export default function WorkingPatternAdmin() {
           </PrimaryButton>
         </form>
 
+        {deleteError && <p className="text-xs text-status-rejected bg-status-rejected/10 rounded-lg px-3 py-2 mb-2">{deleteError}</p>}
         <div className="space-y-2">
           {patterns.map((p) => (
-            <div key={p.working_pattern_id} className="text-sm bg-white/[0.03] rounded-lg px-3 py-2">
-              <p className="text-slate-100">{p.pattern_name}</p>
-              <p className="text-xs text-slate-500">Weekend: {JSON.parse(p.weekend_days).join(', ')}</p>
+            <div key={p.working_pattern_id} className="text-sm bg-white/[0.03] rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+              <div>
+                <p className="text-slate-100">{p.pattern_name}</p>
+                <p className="text-xs text-slate-500">Weekend: {JSON.parse(p.weekend_days).join(', ')}</p>
+              </div>
+              <button
+                onClick={() => deletePattern(p.working_pattern_id)}
+                disabled={deletingId === p.working_pattern_id}
+                className="text-slate-500 hover:text-status-rejected transition-colors shrink-0 disabled:opacity-50"
+                title="Delete pattern"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
           ))}
         </div>
@@ -112,7 +153,110 @@ export default function WorkingPatternAdmin() {
           </PrimaryButton>
         </form>
         <p className="text-xs text-slate-500 mt-3">Exactly one pattern can be active per employee on any given date — overlapping assignments are refused.</p>
+
+        <div className="mt-5 pt-4 border-t border-white/5">
+          <h4 className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-3 flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5" /> Assigned employees
+          </h4>
+          {!assignments.length ? (
+            <p className="text-xs text-slate-500 py-4 text-center">No working pattern assignments yet.</p>
+          ) : (
+            <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+              {assignments.map((a) => {
+                const status = assignmentStatus(a);
+                return (
+                  <button
+                    type="button"
+                    key={a.assignment_id}
+                    onClick={() => setEditingAssignment(a)}
+                    className="w-full flex items-center justify-between gap-3 text-sm bg-white/[0.03] hover:bg-white/[0.06] transition-colors rounded-lg px-3 py-2 text-left"
+                    title="Click to edit this assignment"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-slate-100 truncate">
+                        {a.Employee?.first_name ? `${a.Employee.first_name} ${a.Employee.last_name || ''}`.trim() : a.Employee?.employee_code}
+                        <span className="text-slate-500"> — {a.WorkingPattern?.pattern_name}</span>
+                      </p>
+                      <p className="text-xs text-slate-500">{a.effective_from} → {a.effective_to || 'Open-ended'}</p>
+                    </div>
+                    <span className={`shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${status.className}`}>
+                      {status.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </GlassCard>
+
+      {editingAssignment && (
+        <AssignmentEditModal
+          assignment={editingAssignment}
+          patterns={patterns}
+          onClose={() => setEditingAssignment(null)}
+          onSaved={() => { setEditingAssignment(null); listWorkingPatternAssignments().then((res) => setAssignments(res.data)); }}
+        />
+      )}
     </div>
+  );
+}
+
+function AssignmentEditModal({ assignment, patterns, onClose, onSaved }) {
+  const employeeName = assignment.Employee?.first_name
+    ? `${assignment.Employee.first_name} ${assignment.Employee.last_name || ''}`.trim()
+    : assignment.Employee?.employee_code;
+
+  const [form, setForm] = useState({
+    workingPatternId: assignment.working_pattern_id,
+    effectiveFrom: assignment.effective_from,
+    effectiveTo: assignment.effective_to || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await updateWorkingPatternAssignment(assignment.assignment_id, form);
+      onSaved();
+    } catch (err) {
+      setError(err.message); // e.g. overlap refusal (LMS-015)
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title={`Edit assignment — ${employeeName}`} maxWidth="max-w-md">
+      <form onSubmit={submit} className="space-y-3">
+        <div>
+          <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Pattern</label>
+          <select className="glass-input" value={form.workingPatternId}
+            onChange={(e) => setForm((f) => ({ ...f, workingPatternId: e.target.value }))} required>
+            {patterns.map((p) => <option key={p.working_pattern_id} value={p.working_pattern_id}>{p.pattern_name}</option>)}
+          </select>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Effective From</label>
+            <input type="date" className="glass-input" value={form.effectiveFrom}
+              onChange={(e) => setForm((f) => ({ ...f, effectiveFrom: e.target.value }))} required />
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Effective To</label>
+            <input type="date" className="glass-input" placeholder="Open-ended" value={form.effectiveTo}
+              onChange={(e) => setForm((f) => ({ ...f, effectiveTo: e.target.value }))} />
+          </div>
+        </div>
+        {error && <p className="text-xs font-semibold text-status-rejected bg-status-rejected/10 p-2 rounded-lg">{error}</p>}
+        <div className="flex gap-2 pt-1">
+          <button type="button" onClick={onClose} className="ghost-btn flex-1 justify-center">Cancel</button>
+          <PrimaryButton type="submit" disabled={saving} className="flex-1">{saving ? 'Saving…' : 'Save changes'}</PrimaryButton>
+        </div>
+      </form>
+    </Modal>
   );
 }

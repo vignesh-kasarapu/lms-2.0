@@ -6,6 +6,7 @@ const EmployeeRole = require('./employeeRole.model');
 const ManagementLevel = require('./managementLevel.model');
 const Department = require('./department.model');
 const Grade = require('./grade.model');
+const Region = require('./region.model');
 const Project = require('./project.model');
 const ProjectAssignment = require('./projectAssignment.model');
 const LeaveType = require('./leaveType.model');
@@ -49,9 +50,11 @@ Employee.belongsTo(Employee, { as: 'manager', foreignKey: 'reporting_manager_id'
 Employee.hasMany(Employee, { as: 'directReports', foreignKey: 'reporting_manager_id' });
 Employee.belongsTo(Department, { foreignKey: 'department_id' });
 Employee.belongsTo(Grade, { foreignKey: 'grade_id' });
+Employee.belongsTo(Region, { foreignKey: 'region_id' });
 Employee.belongsTo(ManagementLevel, { foreignKey: 'management_level_id' });
 
-// Roles (explicit, per Addendum override — not derived)
+// Roles: EMPLOYEE/MANAGER/HR_ADMIN are all explicit grants via employee_roles
+// (see roleAssignment.service.js / approvalRouting.service.js#hasRole).
 Employee.belongsToMany(Role, { through: EmployeeRole, foreignKey: 'employee_id', otherKey: 'role_id' });
 Role.belongsToMany(Employee, { through: EmployeeRole, foreignKey: 'role_id', otherKey: 'employee_id' });
 EmployeeRole.belongsTo(Employee, { foreignKey: 'employee_id' });
@@ -72,6 +75,7 @@ LeaveAccrualConfig.belongsTo(LeaveType, { foreignKey: 'leave_type_id' });
 // Leave year / holidays
 LeaveYear.hasMany(Holiday, { foreignKey: 'leave_year_id' });
 Holiday.belongsTo(LeaveYear, { foreignKey: 'leave_year_id' });
+Holiday.belongsTo(Region, { foreignKey: 'region_id' });
 
 // Leave request — core aggregate
 Employee.hasMany(LeaveRequest, { foreignKey: 'employee_id' });
@@ -130,13 +134,14 @@ NotificationDigestPreference.belongsTo(Employee, { foreignKey: 'employee_id' });
 EmployeeFinalSettlement.belongsTo(Employee, { foreignKey: 'employee_id' });
 
 // R3
+TeamCapacityLimit.belongsTo(Employee, { as: 'managerEmployee', foreignKey: 'manager_employee_id' });
 LeaveEncashmentRequest.belongsTo(Employee, { foreignKey: 'employee_id' });
 CompensatoryOffCredit.belongsTo(Employee, { foreignKey: 'employee_id' });
 CalendarFeedSubscription.belongsTo(Employee, { foreignKey: 'employee_id' });
 
 module.exports = {
   sequelize,
-  Employee, Role, EmployeeRole, ManagementLevel, Department, Grade,
+  Employee, Role, EmployeeRole, ManagementLevel, Department, Grade, Region,
   Project, ProjectAssignment, LeaveType, LeavePolicy, LeaveAccrualConfig,
   LeaveYear, Holiday, OrganizationConfig, LeaveRequest, LeaveRequestAttachment,
   LeaveRequestApproval, Delegation, Watcher, StandingWatcher, LeaveLedger,

@@ -15,6 +15,11 @@ const grades = {
   create: async (req, res) => created(res, await adminService.createGrade(req.body, req.currentUser.employeeId)),
 };
 
+const regions = {
+  list: async (req, res) => ok(res, await adminService.listRegions()),
+  create: async (req, res) => created(res, await adminService.createRegion(req.body, req.currentUser.employeeId)),
+};
+
 const projects = {
   list: async (req, res) => ok(res, await adminService.listProjects()),
   create: async (req, res) => created(res, await adminService.createProject(req.body, req.currentUser.employeeId)),
@@ -40,13 +45,16 @@ const selfApproval = {
   revoke: async (req, res) => ok(res, await selfApprovalService.revoke(req.params.grantId, req.currentUser.employeeId)),
 };
 
-module.exports = { departments, managementLevels, grades, projects, leaveTypes, holidays, selfApproval };
+module.exports = { departments, managementLevels, grades, regions, projects, leaveTypes, holidays, selfApproval };
 
 const workingPatternService = require('../services/workingPattern.service');
 const workingPatterns = {
   list: async (req, res) => ok(res, await workingPatternService.listPatterns()),
   create: async (req, res) => created(res, await workingPatternService.createPattern(req.body, req.currentUser.employeeId)),
   assign: async (req, res) => created(res, await workingPatternService.assignPattern({ ...req.body, assignedBy: req.currentUser.employeeId })),
+  assignments: async (req, res) => ok(res, await workingPatternService.listAssignments()),
+  updateAssignment: async (req, res) => ok(res, await workingPatternService.updateAssignment(req.params.assignmentId, req.body, req.currentUser.employeeId)),
+  deactivate: async (req, res) => ok(res, await workingPatternService.deactivatePattern(req.params.workingPatternId, req.currentUser.employeeId)),
 };
 module.exports.workingPatterns = workingPatterns;
 

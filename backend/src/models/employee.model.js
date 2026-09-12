@@ -28,6 +28,9 @@ const Employee = sequelize.define('Employee', {
   department_id: { type: DataTypes.BIGINT, allowNull: true },
   grade_id: { type: DataTypes.BIGINT, allowNull: true },
   management_level_id: { type: DataTypes.BIGINT, allowNull: true },
+  region_id: { type: DataTypes.BIGINT, allowNull: true }, // "region of working" — filters which holidays apply
+  gender: { type: DataTypes.STRING(10), allowNull: true, validate: { isIn: [['MALE', 'FEMALE']] } },
+  marital_status: { type: DataTypes.STRING(20), allowNull: true }, // optional, free-text (e.g. Single/Married)
   designation: { type: DataTypes.STRING(100), allowNull: true, defaultValue: 'Employee' },
   reporting_manager_id: { type: DataTypes.BIGINT, allowNull: true, field: 'manager_id' },
   status: {

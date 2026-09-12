@@ -28,6 +28,10 @@ async function notify({ recipientId, templateKey, tokens = {}, relatedRequestId 
   if (!template) {
     throw new Error(`Notification template "${templateKey}" is not seeded.`);
   }
+  // HR/Admin disabled this template via the admin screen — send nothing, silently. (A
+  // *deleted* template still throws above, same as always: that's a config error worth
+  // surfacing loudly, since it can mean an in-use system template was removed by mistake.)
+  if (!template.is_active) return null;
 
   const subject = substitute(template.subject_template, tokens);
   const body = substitute(template.body_template, tokens);

@@ -6,11 +6,11 @@ const configService = require('../services/config.service');
 const notificationService = require('../services/notification.service');
 const auditService = require('../services/audit.service');
 
-/** BR-34: reminder at 75% of SLA. BR-35/36: escalate one level up on breach, terminate at HR/Admin. */
+/** BR-34: reminder N days before the SLA deadline. BR-35/36: escalate one level up on breach, terminate at HR/Admin. */
 async function runSlaSweep() {
   const { Notification } = require('../models');
   const slaDays = await configService.get('approval.sla_working_days');
-  const reminderPct = await configService.get('approval.sla_reminder_pct');
+  const reminderDaysBefore = await configService.get('approval.sla_reminder_days_before');
 
   const pending = await LeaveRequest.findAll({ where: { state: { [Op.in]: ['PENDING_MANAGER', 'PENDING_HR'] } } });
 
@@ -18,11 +18,11 @@ async function runSlaSweep() {
     if (!request.sla_started_at) continue;
     const elapsedMs = Date.now() - new Date(request.sla_started_at).getTime();
     const slaMs = slaDays * 24 * 60 * 60 * 1000;
-    const elapsedPct = (elapsedMs / slaMs) * 100;
+    const remainingDays = (slaMs - elapsedMs) / (24 * 60 * 60 * 1000);
 
-    if (elapsedPct >= 100) {
+    if (elapsedMs >= slaMs) {
       await escalateOneLevel(request);
-    } else if (elapsedPct >= reminderPct) {
+    } else if (remainingDays <= reminderDaysBefore) {
       // A reminder already exists for this stage if one was sent since the SLA clock last
       // started (sla_started_at resets on every escalation) — without this check, a request
       // sitting in the 75%-100% band gets re-notified on every cron tick.

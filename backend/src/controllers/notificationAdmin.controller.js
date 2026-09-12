@@ -5,10 +5,25 @@ async function listTemplates(req, res) {
   return ok(res, await notificationAdminService.listTemplates());
 }
 
+async function createTemplate(req, res) {
+  const { templateKey, subjectTemplate, bodyTemplate } = req.body;
+  const template = await notificationAdminService.createTemplate({ templateKey, subjectTemplate, bodyTemplate }, req.currentUser.employeeId);
+  return ok(res, template);
+}
+
 async function updateTemplate(req, res) {
   const { subjectTemplate, bodyTemplate } = req.body;
   const template = await notificationAdminService.updateTemplate(req.params.templateKey, { subjectTemplate, bodyTemplate }, req.currentUser.employeeId);
   return ok(res, template);
+}
+
+async function setTemplateActive(req, res) {
+  const template = await notificationAdminService.setTemplateActive(req.params.templateKey, !!req.body.isActive, req.currentUser.employeeId);
+  return ok(res, template);
+}
+
+async function deleteTemplate(req, res) {
+  return ok(res, await notificationAdminService.deleteTemplate(req.params.templateKey, req.currentUser.employeeId));
 }
 
 async function getMyDigestPreference(req, res) {
@@ -21,4 +36,7 @@ async function setMyDigestPreference(req, res) {
   return ok(res, pref);
 }
 
-module.exports = { listTemplates, updateTemplate, getMyDigestPreference, setMyDigestPreference };
+module.exports = {
+  listTemplates, createTemplate, updateTemplate, setTemplateActive, deleteTemplate,
+  getMyDigestPreference, setMyDigestPreference,
+};

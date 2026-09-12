@@ -137,14 +137,15 @@ export default function Delegation() {
             </div>
           )}
 
-          {!eligible.candidates.length ? (
-            <EmptyState
-              icon={UserCog}
-              title="No eligible delegate found"
-              description="You have no peer managers under your supervisor, and no supervisor is on record."
-            />
-          ) : (
-            <form onSubmit={submit} className="space-y-3.5">
+          {!eligible.candidates.length && (
+            <div className="flex items-start gap-2 text-xs text-slate-400 bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 mb-4">
+              <Info className="w-4 h-4 shrink-0 mt-0.5 text-slate-500" />
+              <span>You have no peer managers under your supervisor, and no supervisor is on record — there&rsquo;s no one eligible to delegate to yet.</span>
+            </div>
+          )}
+
+          <form onSubmit={submit} className="space-y-3.5">
+            <fieldset disabled={!eligible.candidates.length} className="space-y-3.5 disabled:opacity-40">
               <div>
                 <label className="text-[11px] font-bold uppercase text-emerald-400 tracking-wider mb-1 block">
                   Select Delegate Officer
@@ -189,13 +190,13 @@ export default function Delegation() {
 
               <button
                 type="submit"
-                disabled={saving}
-                className="hr-btn w-full !py-2.5 text-xs font-bold mt-2"
+                disabled={saving || !eligible.candidates.length}
+                className="hr-btn w-full !py-2.5 text-xs font-bold mt-2 disabled:cursor-not-allowed"
               >
                 {saving ? 'Creating Delegation…' : 'Confirm Delegation Assignment'}
               </button>
-            </form>
-          )}
+            </fieldset>
+          </form>
         </div>
 
         {/* Current Delegations List */}

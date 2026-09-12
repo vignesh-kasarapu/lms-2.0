@@ -12,6 +12,9 @@ router.get('/management-levels', controller.managementLevels.list);
 router.get('/grades', controller.grades.list);
 router.post('/grades', controller.grades.create);
 
+router.get('/regions', controller.regions.list);
+router.post('/regions', controller.regions.create);
+
 router.get('/projects', controller.projects.list);
 router.post('/projects', controller.projects.create);
 router.post('/project-assignments', controller.projects.assign);
@@ -30,12 +33,18 @@ router.post('/self-approval-permissions/:grantId/revoke', controller.selfApprova
 
 router.get('/working-patterns', controller.workingPatterns.list);
 router.post('/working-patterns', controller.workingPatterns.create);
+router.post('/working-patterns/:workingPatternId/deactivate', controller.workingPatterns.deactivate);
 router.post('/working-pattern-assignments', controller.workingPatterns.assign);
+router.get('/working-pattern-assignments', controller.workingPatterns.assignments);
+router.patch('/working-pattern-assignments/:assignmentId', controller.workingPatterns.updateAssignment);
 
 router.post('/carry-forward/trigger', controller.carryForward.trigger);
 
 const notificationAdminController = require('../controllers/notificationAdmin.controller');
 router.get('/notification-templates', notificationAdminController.listTemplates);
+router.post('/notification-templates', notificationAdminController.createTemplate);
 router.patch('/notification-templates/:templateKey', notificationAdminController.updateTemplate);
+router.patch('/notification-templates/:templateKey/active', notificationAdminController.setTemplateActive);
+router.delete('/notification-templates/:templateKey', notificationAdminController.deleteTemplate);
 
 module.exports = router;

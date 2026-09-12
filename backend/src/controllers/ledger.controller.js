@@ -1,4 +1,5 @@
-const { LeaveLedger, LeaveYear } = require('../models');
+const { Op } = require('sequelize');
+const { LeaveLedger, LeaveYear, Employee, LeaveType } = require('../models');
 const balanceService = require('../services/balance.service');
 const auditService = require('../services/audit.service');
 const notificationService = require('../services/notification.service');
@@ -44,6 +45,43 @@ async function employeeLedger(req, res) {
   return ok(res, withRunningBalance(entries));
 }
 
+/** HR/Admin cross-employee ledger view — every existing endpoint above is scoped to one
+ * employee ("me" or a single :employeeId); this is the "all transactions, with filters"
+ * admin screen. Paginated, most recent first. */
+async function allEntries(req, res) {
+  const {
+    employeeId, leaveTypeId, leaveYearId, entryType, dateFrom, dateTo, page = 1, pageSize = 50,
+  } = req.query;
+
+  const where = {};
+  if (employeeId) where.employee_id = employeeId;
+  if (leaveTypeId) where.leave_type_id = leaveTypeId;
+  if (leaveYearId) where.leave_year_id = leaveYearId;
+  if (entryType) where.entry_type = entryType;
+  if (dateFrom || dateTo) {
+    where.created_at = {};
+    if (dateFrom) where.created_at[Op.gte] = new Date(dateFrom);
+    if (dateTo) where.created_at[Op.lte] = new Date(`${dateTo}T23:59:59.999Z`);
+  }
+
+  const limit = Math.min(parseInt(pageSize, 10) || 50, 200);
+  const currentPage = Math.max(parseInt(page, 10) || 1, 1);
+  const offset = (currentPage - 1) * limit;
+
+  const { count, rows } = await LeaveLedger.findAndCountAll({
+    where,
+    include: [
+      { model: Employee, attributes: ['employee_id', 'first_name', 'last_name', 'full_name', 'employee_code'] },
+      { model: LeaveType, attributes: ['type_name', 'type_code'] },
+    ],
+    order: [['created_at', 'DESC']],
+    limit,
+    offset,
+  });
+
+  return ok(res, { total: count, page: currentPage, pageSize: limit, entries: rows });
+}
+
 /** LMS-054: HR/Admin manual adjustment — signed quantity + mandatory reason, never silent. */
 async function adjust(req, res) {
   const { employeeId, leaveTypeId, leaveYearId, quantity, reason } = req.body;
@@ -64,4 +102,4 @@ async function adjust(req, res) {
   return created(res, entry);
 }
 
-module.exports = { myLedger, employeeLedger, adjust };
+module.exports = { myLedger, employeeLedger, allEntries, adjust };

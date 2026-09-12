@@ -7,6 +7,9 @@ export const listManagementLevels = () => client.get('/admin/management-levels')
 export const listGrades = () => client.get('/admin/grades');
 export const createGrade = (payload) => client.post('/admin/grades', payload);
 
+export const listRegions = () => client.get('/admin/regions');
+export const createRegion = (payload) => client.post('/admin/regions', payload);
+
 export const listProjects = () => client.get('/admin/projects');
 export const createProject = (payload) => client.post('/admin/projects', payload);
 export const assignProject = (payload) => client.post('/admin/project-assignments', payload);
@@ -25,15 +28,30 @@ export const revokeSelfApproval = (grantId) => client.post(`/admin/self-approval
 
 export const listWorkingPatterns = () => client.get('/admin/working-patterns');
 export const createWorkingPattern = (payload) => client.post('/admin/working-patterns', payload);
+export const deactivateWorkingPattern = (id) => client.post(`/admin/working-patterns/${id}/deactivate`);
 export const assignWorkingPattern = (payload) => client.post('/admin/working-pattern-assignments', payload);
+export const listWorkingPatternAssignments = () => client.get('/admin/working-pattern-assignments');
+export const updateWorkingPatternAssignment = (assignmentId, payload) =>
+  client.patch(`/admin/working-pattern-assignments/${assignmentId}`, payload);
 
 export const listNotificationTemplates = () => client.get('/admin/notification-templates');
+export const createNotificationTemplate = (payload) => client.post('/admin/notification-templates', payload);
 export const updateNotificationTemplate = (templateKey, payload) => client.patch(`/admin/notification-templates/${templateKey}`, payload);
+export const setNotificationTemplateActive = (templateKey, isActive) => client.patch(`/admin/notification-templates/${templateKey}/active`, { isActive });
+export const deleteNotificationTemplate = (templateKey) => client.delete(`/admin/notification-templates/${templateKey}`);
 
-export const listBlackoutPeriods = () => client.get('/r3/blackout-periods');
+export const listBlackoutPeriods = (includeInactive = false) => client.get('/r3/blackout-periods', { params: { includeInactive } });
 export const createBlackoutPeriod = (payload) => client.post('/r3/blackout-periods', payload);
+export const updateBlackoutPeriod = (id, payload) => client.patch(`/r3/blackout-periods/${id}`, payload);
+export const setBlackoutPeriodActive = (id, isActive) => client.patch(`/r3/blackout-periods/${id}/active`, { isActive });
 export const deactivateBlackoutPeriod = (id) => client.post(`/r3/blackout-periods/${id}/deactivate`);
+export const removeBlackoutPeriod = (id) => client.delete(`/r3/blackout-periods/${id}`);
+
+export const listTeamCapacityLimits = () => client.get('/r3/team-capacity-limits');
 export const createTeamCapacityLimit = (payload) => client.post('/r3/team-capacity-limits', payload);
+export const updateTeamCapacityLimit = (id, payload) => client.patch(`/r3/team-capacity-limits/${id}`, payload);
+export const setTeamCapacityLimitActive = (id, isActive) => client.patch(`/r3/team-capacity-limits/${id}/active`, { isActive });
+export const removeTeamCapacityLimit = (id) => client.delete(`/r3/team-capacity-limits/${id}`);
 
 export const createEncashment = (payload) => client.post('/r3/leave-encashment', payload);
 export const creditCompOff = (payload) => client.post('/r3/comp-off', payload);

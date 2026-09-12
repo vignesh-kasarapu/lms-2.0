@@ -8,6 +8,7 @@ const Holiday = sequelize.define('Holiday', {
   holiday_date: { type: DataTypes.DATEONLY, allowNull: false },
   holiday_name: { type: DataTypes.STRING(200), allowNull: false },
   leave_year_id: { type: DataTypes.BIGINT, allowNull: false },
+  region_id: { type: DataTypes.BIGINT, allowNull: true }, // null = org-wide, applies to every region
   created_by: { type: DataTypes.BIGINT, allowNull: false },
 }, { tableName: 'holidays', updatedAt: false });
 

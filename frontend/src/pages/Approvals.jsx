@@ -5,6 +5,7 @@ import GlassCard from '../components/common/GlassCard';
 import { GhostButton } from '../components/common/GlassButton';
 import EmptyState from '../components/common/EmptyState';
 import Topbar from '../components/layout/Topbar';
+import { celebrate } from '../utils/celebrate';
 
 export default function Approvals() {
   const [requests, setRequests] = useState([]);
@@ -21,7 +22,7 @@ export default function Approvals() {
     return () => document.body.classList.remove('theme-hr');
   }, []);
 
-  const approve = (id) => decideRequest(id, 'APPROVE').then(load);
+  const approve = (id) => decideRequest(id, 'APPROVE').then(() => { celebrate(); load(); });
   const submitReject = () => decideRequest(rejecting, 'REJECT', reason).then(() => { setRejecting(null); setReason(''); load(); });
 
   const advanceCount = requests.filter((r) => r.is_advance_leave).length;
