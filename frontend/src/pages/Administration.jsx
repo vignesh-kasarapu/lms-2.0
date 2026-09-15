@@ -4,7 +4,6 @@ import EmployeeAdmin from '../components/admin/EmployeeAdmin';
 import LeaveTypeAdmin from '../components/admin/LeaveTypeAdmin';
 import HolidayAdmin from '../components/admin/HolidayAdmin';
 import OrgConfigAdmin from '../components/admin/OrgConfigAdmin';
-import ReportsAdmin from '../components/admin/ReportsAdmin';
 import AuditLogAdmin from '../components/admin/AuditLogAdmin';
 import SelfApprovalAdmin from '../components/admin/SelfApprovalAdmin';
 import WorkingPatternAdmin from '../components/admin/WorkingPatternAdmin';
@@ -38,7 +37,6 @@ export default function Administration() {
     capacity: { label: 'Blackout & capacity', content: <CapacityAdmin /> },
     'balance-extras': { label: 'Encashment & comp-off', content: <BalanceExtrasAdmin leaveYearId={leaveYearId} /> },
     'balance-adjustment': { label: 'Balance adjustment', content: <BalanceAdjustmentAdmin /> },
-    reports: { label: 'Reports', content: <ReportsAdmin /> },
     audit: { label: 'Audit log', content: <AuditLogAdmin /> },
     ledger: { label: 'Ledger', content: <LedgerAdmin /> },
   };

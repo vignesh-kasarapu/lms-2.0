@@ -10,6 +10,8 @@ import StatusBadge from '../components/common/StatusBadge';
 import { PrimaryButton } from '../components/common/GlassButton';
 import Topbar from '../components/layout/Topbar';
 
+const AWAITING_DECISION = ['PENDING_MANAGER', 'PENDING_HR', 'CANCELLATION_REQUESTED'];
+
 export default function RequestDetail() {
   const { requestId } = useParams();
   const { hasRole } = useAuth();
@@ -87,10 +89,17 @@ export default function RequestDetail() {
             <h3 className="font-display font-bold text-ink-100 mb-4 flex items-center gap-2">
               <Clock className="w-4 h-4 text-aurora-cyan" /> Approval timeline
             </h3>
+            {AWAITING_DECISION.includes(request.state) && request.currentApprover && (
+              <p className="text-sm text-aurora-cyan mb-3">
+                Currently pending with: <span className="font-medium">{request.currentApprover.full_name}</span>
+              </p>
+            )}
             {request.scope === 'WATCHER_MASKED' && !request.approvals ? (
               <p className="text-sm text-ink-500">Approval details are not shown in this limited view.</p>
             ) : !request.approvals?.length ? (
-              <p className="text-sm text-ink-500">No decisions recorded yet.</p>
+              <p className="text-sm text-ink-500">
+                {AWAITING_DECISION.includes(request.state) ? 'No decision yet at this stage.' : 'No decisions recorded yet.'}
+              </p>
             ) : (
               <div className="space-y-3">
                 {request.approvals.map((a) => (

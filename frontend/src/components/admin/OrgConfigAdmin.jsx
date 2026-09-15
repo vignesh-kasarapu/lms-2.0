@@ -19,6 +19,7 @@ const FIELD_META = {
   'sick_leave.alert_threshold_days': { label: 'Sick-leave alert threshold (days)', hint: 'Above this, the supervisor/HR alerts fire.' },
   'sick_leave.alert_supervisor_enabled': { label: 'Sick-leave alert to supervisor', hint: 'Independent of the HR toggle.' },
   'sick_leave.alert_hr_enabled': { label: 'Sick-leave alert to HR/Admin', hint: 'Independent of the supervisor toggle.' },
+  'holiday.optional_holiday_quota_override': { label: 'Optional holiday quota override', hint: '0 = auto (half of published optional holidays, rounded up). A positive number fixes the quota org-wide instead.' },
 };
 
 // weekend.days is stored as a JSON array string (e.g. '["SAT","SUN"]') — shown/edited here

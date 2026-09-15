@@ -30,6 +30,8 @@ router.use('/attachments', attachmentRoutes);
 router.use('/r3', r3Routes);
 router.use('/calendar-feed', calendarFeedPublicRoutes); // NOT under requireAuth — token-authenticated instead
 router.use('/notifications', notificationRoutes);
-router.use('/holidays', holidayViewRoutes); // read-only, all authenticated users — distinct from /admin/holidays
+// Employee-facing: the calendar itself is read-only, plus each employee's own optional-holiday
+// select/deselect — distinct from the HR/Admin-only CRUD under /admin/holidays.
+router.use('/holidays', holidayViewRoutes);
 
 module.exports = router;

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, CalendarDays, Paperclip, Sparkles, CheckCircle2, FileText, ArrowRight } from 'lucide-react';
-import { previewApplication, submitRequest, saveDraft } from '../api/leaveRequests';
+import { AlertTriangle, CalendarDays, Paperclip, Sparkles, CheckCircle2, FileText, ArrowRight, PartyPopper, ListChecks } from 'lucide-react';
+import { previewApplication, submitRequest, saveDraft, getMyRequests } from '../api/leaveRequests';
 import { getDashboard } from '../api/employees';
+import { listHolidays, getOptionalHolidaySummary } from '../api/holidays';
 import { uploadAttachment } from '../api/attachments';
 import { celebrate } from '../utils/celebrate';
 import GlassCard from '../components/common/GlassCard';
@@ -28,6 +29,7 @@ export default function ApplyLeave() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [file, setFile] = useState(null);
+  const [upcoming, setUpcoming] = useState([]);
   const previewRequestId = useRef(0);
 
   const selectedType = leaveTypes.find((t) => String(t.id) === String(form.leaveTypeId));
@@ -44,6 +46,42 @@ export default function ApplyLeave() {
       }));
       setLeaveTypes(dynamicTypes);
     }).catch(() => setTypesError('Could not load your leave types. Refresh the page to try again.'));
+  }, []);
+
+  // A merged, dated view of everything that already occupies an upcoming day — public
+  // holidays, optional holidays this employee has opted into, and their own previously
+  // applied leave requests — so a date can be sanity-checked here before picking one below,
+  // instead of cross-referencing the separate Holiday Calendar and My Requests pages.
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const EXCLUDED_STATES = ['DRAFT', 'WITHDRAWN', 'CANCELLED', 'REJECTED'];
+
+    Promise.all([listHolidays(), getMyRequests()])
+      .then(async ([holidayRes, requestRes]) => {
+        const holidays = holidayRes.data;
+        const optionalYearIds = [...new Set(holidays.filter((h) => h.is_optional).map((h) => h.leave_year_id))];
+        const summaries = await Promise.all(
+          optionalYearIds.map((id) => getOptionalHolidaySummary(id).then((r) => r.data).catch(() => ({ eligibleHolidays: [] }))),
+        );
+        const selectedOptionalIds = new Set(
+          summaries.flatMap((s) => s.eligibleHolidays.filter((h) => h.isSelected).map((h) => h.holiday_id)),
+        );
+
+        const holidayItems = holidays
+          .filter((h) => h.holiday_date >= today && (!h.is_optional || selectedOptionalIds.has(h.holiday_id)))
+          .map((h) => ({ date: h.holiday_date, label: h.holiday_name, type: h.is_optional ? 'OPTIONAL_HOLIDAY' : 'HOLIDAY' }));
+
+        const leaveItems = requestRes.data
+          .filter((r) => !EXCLUDED_STATES.includes(r.state) && r.end_date >= today)
+          .map((r) => ({
+            date: r.start_date,
+            label: `${r.LeaveType?.type_name || 'Leave'} · ${r.state.replaceAll('_', ' ').toLowerCase()}`,
+            type: 'MY_LEAVE',
+          }));
+
+        setUpcoming([...holidayItems, ...leaveItems].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8));
+      })
+      .catch(() => {}); // non-critical sidebar context — the form itself must still work if this fails
   }, []);
 
   useEffect(() => {
@@ -271,6 +309,40 @@ export default function ApplyLeave() {
               )}
             </AnimatePresence>
           </GlassCard>
+
+          {upcoming.length > 0 && (
+            <GlassCard className="mt-4 !p-6">
+              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-frost/10">
+                <div className="w-8 h-8 rounded-lg bg-aurora-violet/10 text-aurora-violet flex items-center justify-center">
+                  <ListChecks className="w-4 h-4" />
+                </div>
+                <h3 className="font-display font-bold text-ink-100 text-base">Upcoming</h3>
+              </div>
+              <div className="space-y-2.5">
+                {upcoming.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {item.type === 'MY_LEAVE' ? (
+                        <ListChecks className="w-3.5 h-3.5 text-aurora-violet shrink-0" />
+                      ) : (
+                        <PartyPopper className={`w-3.5 h-3.5 shrink-0 ${item.type === 'OPTIONAL_HOLIDAY' ? 'text-status-advance' : 'text-ink-400'}`} />
+                      )}
+                      <span className="text-ink-200 truncate">{item.label}</span>
+                    </div>
+                    <span className={`shrink-0 font-semibold px-1.5 py-0.5 rounded-md text-[10px] border ${
+                      item.type === 'MY_LEAVE'
+                        ? 'text-aurora-violet border-aurora-violet/30 bg-aurora-violet/10'
+                        : item.type === 'OPTIONAL_HOLIDAY'
+                          ? 'text-status-advance border-status-advance/30 bg-status-advance/10'
+                          : 'text-ink-400 border-frost/10 bg-frost/5'
+                    }`}>
+                      {item.date}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+          )}
         </div>
       </div>
     </>

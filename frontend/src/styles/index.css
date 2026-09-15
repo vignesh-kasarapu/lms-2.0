@@ -330,10 +330,22 @@
   /* Higher specificity than the base rules (attribute selector + class),
    * so these win without needing !important, regardless of source order. */
   html[data-theme='light'] .glass-panel {
-    @apply bg-white/85 border-slate-200 shadow-[0_8px_28px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] hover:border-slate-300;
+    /* Both the card and the page background are near-white in light mode, so the shadow is
+       the only thing separating a card from the screen behind it — a neutral slate shadow
+       read as too generic. Tinted with the app's own primary accent (aurora-violet,
+       rgb(139,109,255) — the same color .aurora-btn's glow uses) instead, so the "lift"
+       reads as part of the app's palette rather than a plain drop-shadow. Two layers (a
+       soft ambient shadow plus a tighter contact shadow) gives a visibly distinct edge
+       without looking heavy. */
+    @apply bg-white/85 border-slate-200 shadow-[0_10px_32px_rgba(139,109,255,0.16),0_2px_8px_rgba(139,109,255,0.10),inset_0_1px_0_rgba(255,255,255,0.9)] hover:border-slate-300;
   }
   html[data-theme='light'] .glass-panel-strong {
-    @apply bg-white/95 border-slate-200;
+    /* Previously had no shadow override at all here, so it silently inherited the
+       dark-mode .glass-panel-strong shadow (shadow-glass, rgba(0,0,0,0.35)) — inconsistent
+       with every other light-mode panel. Explicit override, a step stronger than
+       .glass-panel's to match its "more prominent surface" role in dark mode, same
+       primary-accent tint. */
+    @apply bg-white/95 border-slate-200 shadow-[0_14px_40px_rgba(139,109,255,0.22),0_3px_10px_rgba(139,109,255,0.14),inset_0_1px_0_rgba(255,255,255,0.95)];
   }
   html[data-theme='light'] .glass-panel-hr {
     @apply bg-emerald-50/80 border-emerald-200 shadow-[0_8px_28px_rgba(16,185,129,0.10)];

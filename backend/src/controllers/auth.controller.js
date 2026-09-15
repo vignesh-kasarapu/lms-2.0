@@ -7,6 +7,14 @@ const { Employee } = require('../models');
 
 const STATE_COOKIE_NAME = 'lms_oauth_state';
 
+/** Public, unauthenticated: lets the (already-built, production) login page know whether
+ * to offer the dev/demo sign-in link at all, without hardcoding it to a Vite build-time
+ * flag (import.meta.env.DEV is always false in a production bundle — e.g. the one served
+ * by nginx in Docker — even when DEV_AUTH_BYPASS_ENABLED=true server-side). */
+function getAuthConfig(req, res) {
+  return ok(res, { devAuthBypassEnabled: env.devAuthBypass.enabled });
+}
+
 /** LMS-001: entry point redirects to Microsoft. No username/password screen exists in this system. */
 function redirectToEntra(req, res) {
   // CSRF protection: bind this browser to the state we send Entra, and check it back on callback.
@@ -101,4 +109,4 @@ async function signOut(req, res) {
   return ok(res, { signedOut: true });
 }
 
-module.exports = { redirectToEntra, handleCallback, devLogin, signOut };
+module.exports = { getAuthConfig, redirectToEntra, handleCallback, devLogin, signOut };

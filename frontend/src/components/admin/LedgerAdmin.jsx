@@ -17,7 +17,7 @@ const COLUMNS = [
   { label: 'Date' },
   { label: 'Employee' },
   { label: 'Leave Type' },
-  { label: 'Entry Type' },
+  { label: 'Transaction Type' },
   { label: 'Quantity' },
   { label: 'Source / Reason' },
 ];
@@ -73,7 +73,7 @@ export default function LedgerAdmin() {
           {leaveTypes.map((t) => <option key={t.leave_type_id} value={t.leave_type_id}>{t.type_name}</option>)}
         </select>
         <select className="glass-input !py-2 text-xs" value={filters.entryType} onChange={(e) => updateFilter('entryType', e.target.value)}>
-          <option value="">All entry types</option>
+          <option value="">All transaction types</option>
           {ENTRY_TYPES.map((t) => <option key={t} value={t}>{t.replaceAll('_', ' ')}</option>)}
         </select>
         <input type="date" className="glass-input !py-2 text-xs" value={filters.dateFrom}

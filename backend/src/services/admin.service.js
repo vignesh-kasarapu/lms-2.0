@@ -127,7 +127,7 @@ async function listHolidays(leaveYearId) {
 async function addHoliday(payload, actorId) {
   const holiday = await Holiday.create({
     holiday_date: payload.date, holiday_name: payload.name, leave_year_id: payload.leaveYearId,
-    region_id: payload.regionId || null, created_by: actorId,
+    region_id: payload.regionId || null, is_optional: !!payload.isOptional, created_by: actorId,
   });
 
   // 7.3.15: warn where a holiday is added inside an already-approved leave span.

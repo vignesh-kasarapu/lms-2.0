@@ -2,7 +2,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  LayoutDashboard, PlaneTakeoff, ListChecks, CalendarDays, Users, Settings, ShieldCheck, UserCog, PartyPopper, Sparkles, Building2, ChevronDown, X
+  LayoutDashboard, PlaneTakeoff, ListChecks, CalendarDays, Users, Settings, ShieldCheck, UserCog, PartyPopper, Sparkles, Building2, ChevronDown, X, FileBarChart
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -18,6 +18,7 @@ const NAV_MANAGEMENT = [
   { to: '/approvals', label: 'Approvals Queue', icon: ShieldCheck, roles: ['MANAGER', 'HR_ADMIN'] },
   { to: '/my-team', label: 'My Team', icon: Users, roles: ['MANAGER', 'HR_ADMIN'] },
   { to: '/delegation', label: 'Delegations', icon: UserCog, roles: ['MANAGER', 'HR_ADMIN'] },
+  { to: '/reports', label: 'Reports', icon: FileBarChart, roles: ['MANAGER', 'HR_ADMIN'] },
 ];
 
 const NAV_ADMIN = [
@@ -34,7 +35,6 @@ const ADMIN_SECTIONS = [
   ['capacity', 'Blackout & capacity'],
   ['balance-extras', 'Encashment & comp-off'],
   ['balance-adjustment', 'Balance adjustment'],
-  ['reports', 'Reports'],
   ['audit', 'Audit log'],
   ['ledger', 'Ledger'],
   ['org-config', 'Settings'],

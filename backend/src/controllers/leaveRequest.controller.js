@@ -61,10 +61,16 @@ async function decideCancellation(req, res) {
 }
 
 async function myRequests(req, res) {
-  const { LeaveRequest, LeaveType } = require('../models');
+  const { LeaveRequest, LeaveType, Employee } = require('../models');
   const requests = await LeaveRequest.findAll({
     where: { employee_id: req.currentUser.employeeId },
-    include: [{ model: LeaveType, attributes: ['type_name', 'type_code'] }],
+    include: [
+      { model: LeaveType, attributes: ['type_name', 'type_code'] },
+      // So the requester can see WHO currently holds their pending request (e.g. after an
+      // SLA escalation moved it up a level) without a separate lookup — surfaced in the UI
+      // as "Pending with: <name>".
+      { model: Employee, as: 'currentApprover', attributes: ['full_name', 'first_name', 'last_name', 'employee_code'] },
+    ],
     order: [['created_at', 'DESC']],
   });
   return ok(res, requests);
@@ -88,6 +94,7 @@ async function getScopedDetail({ requestId, viewerId, viewerIsHrAdmin }) {
       { model: LeaveRequestApproval, as: 'approvals' },
       { model: Watcher, as: 'watchers', include: [{ model: Employee, as: 'watcherEmployee', attributes: ['full_name'] }] },
       { model: Employee, as: 'employee', attributes: ['full_name', 'employee_code'] },
+      { model: Employee, as: 'currentApprover', attributes: ['full_name', 'first_name', 'last_name', 'employee_code'] },
       { model: LeaveRequestAttachment, as: 'attachments', attributes: ['attachment_id', 'file_name', 'content_type', 'size_bytes', 'uploaded_at'] },
     ],
   });

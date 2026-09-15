@@ -42,6 +42,7 @@ const TeamCapacityLimit = require('./teamCapacityLimit.model');
 const LeaveEncashmentRequest = require('./leaveEncashmentRequest.model');
 const CompensatoryOffCredit = require('./compensatoryOffCredit.model');
 const CalendarFeedSubscription = require('./calendarFeedSubscription.model');
+const OptionalHolidaySelection = require('./optionalHolidaySelection.model');
 
 // ---------------- Associations ----------------
 
@@ -76,6 +77,9 @@ LeaveAccrualConfig.belongsTo(LeaveType, { foreignKey: 'leave_type_id' });
 LeaveYear.hasMany(Holiday, { foreignKey: 'leave_year_id' });
 Holiday.belongsTo(LeaveYear, { foreignKey: 'leave_year_id' });
 Holiday.belongsTo(Region, { foreignKey: 'region_id' });
+Holiday.hasMany(OptionalHolidaySelection, { foreignKey: 'holiday_id' });
+OptionalHolidaySelection.belongsTo(Holiday, { foreignKey: 'holiday_id' });
+OptionalHolidaySelection.belongsTo(Employee, { foreignKey: 'employee_id' });
 
 // Leave request — core aggregate
 Employee.hasMany(LeaveRequest, { foreignKey: 'employee_id' });
@@ -150,5 +154,5 @@ module.exports = {
   WorkingPattern, WorkingPatternAssignment, ManagerReassignmentLog,
   NotificationDigestPreference, EmployeeFinalSettlement,
   BlackoutPeriod, TeamCapacityLimit, LeaveEncashmentRequest,
-  CompensatoryOffCredit, CalendarFeedSubscription,
+  CompensatoryOffCredit, CalendarFeedSubscription, OptionalHolidaySelection,
 };

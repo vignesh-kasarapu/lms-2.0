@@ -21,6 +21,7 @@ export const updateLeaveTypePolicy = (leaveTypeId, payload) => client.patch(`/ad
 export const listHolidays = (leaveYearId) => client.get('/admin/holidays', { params: { leaveYearId } });
 export const addHoliday = (payload) => client.post('/admin/holidays', payload);
 export const removeHoliday = (holidayId) => client.delete(`/admin/holidays/${holidayId}`);
+export const getOptionalHolidayUsage = (leaveYearId) => client.get('/admin/holidays/optional-usage', { params: { leaveYearId } });
 
 export const listSelfApprovalGrants = () => client.get('/admin/self-approval-permissions');
 export const grantSelfApproval = (payload) => client.post('/admin/self-approval-permissions', payload);

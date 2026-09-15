@@ -12,6 +12,7 @@ import MyTeam from './pages/MyTeam';
 import TeamCalendar from './pages/TeamCalendar';
 import HolidayCalendar from './pages/HolidayCalendar';
 import Delegation from './pages/Delegation';
+import Reports from './pages/Reports';
 import Administration from './pages/Administration';
 
 /** A plain 401 (no session yet) is the routine state for a first-time visitor — not
@@ -65,6 +66,7 @@ export default function App() {
               <Route path="/approvals" element={<Protected roles={['MANAGER', 'HR_ADMIN']}><Approvals /></Protected>} />
               <Route path="/my-team" element={<Protected roles={['MANAGER', 'HR_ADMIN']}><MyTeam /></Protected>} />
               <Route path="/delegation" element={<Protected roles={['MANAGER', 'HR_ADMIN']}><Delegation /></Protected>} />
+              <Route path="/reports" element={<Protected roles={['MANAGER', 'HR_ADMIN']}><Reports /></Protected>} />
               <Route path="/administration" element={<Protected roles={['HR_ADMIN']}><Administration /></Protected>} />
             </Route>
           </Routes>

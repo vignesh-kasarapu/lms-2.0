@@ -45,7 +45,8 @@ const workingPatternService = require('../services/workingPattern.service');
 const adminService = require('../services/admin.service');
 const balanceService = require('../services/balance.service');
 const approvalRouting = require('../services/approvalRouting.service');
-const { runLopConversionSweep } = require('../jobs/escalation.job');
+const configService = require('../services/config.service');
+const { runLopConversionSweep, escalateOneLevel } = require('../jobs/escalation.job');
 
 const SYSTEM_ACTOR_ID = null; // seed script acts as "the system", same convention the accrual jobs use
 const TODAY = new Date();
@@ -448,6 +449,25 @@ async function seedDemo() {
     req11 = await leaveRequestService.decide({ requestId: req11.request_id, actorId: neha.employee_id, decision: 'APPROVE', reason: '' });
   }
 
+  // #12 Rohan — Casual, 1 day, submitted to Vikram (his manager) who never decides within the
+  // SLA window -> the SLA sweep escalates it one level, to Vikram's own manager, Asha (HR/Admin).
+  // Demonstrates the escalation flow end-to-end: same mechanism escalation.job.js#runSlaSweep
+  // would trigger for real once `approval.sla_working_days` elapses, just fast-forwarded here by
+  // backdating sla_started_at instead of waiting — everything else (routing, notifications,
+  // audit trail) runs through the real escalateOneLevel(), not hand-inserted.
+  let req12 = await findRequestByMarker(rohan.employee_id, '[SEED-12]');
+  if (!req12) {
+    const w = reserveWindow(1);
+    req12 = await leaveRequestService.submitRequest({
+      employeeId: rohan.employee_id, leaveTypeId: casual.leave_type_id, startDate: w.start, endDate: w.end,
+      isHalfDay: false, reason: 'Escalation demo [SEED-12]',
+    });
+    const slaWorkingDays = await configService.get('approval.sla_working_days');
+    await req12.update({ sla_started_at: addDays(new Date(), -(Number(slaWorkingDays) + 3)) });
+    await escalateOneLevel(req12);
+    req12 = await LeaveRequest.findByPk(req12.request_id);
+  }
+
   // ---------------------------------------------------------------------
   // 4. Delegations
   // ---------------------------------------------------------------------
@@ -518,6 +538,26 @@ async function seedDemo() {
   check('#9 Priya Annual (approved) is CANCELLATION_REQUESTED', req9.state === 'CANCELLATION_REQUESTED', req9.state);
   check('#10 Arjun Sick 4d is APPROVED', req10.state === 'APPROVED', req10.state);
   check('#11 Kavya Casual half-day is APPROVED', req11.state === 'APPROVED', req11.state);
+  check(
+    // Escalation moves current_approver_id up the management chain (Vikram -> his own
+    // manager, Asha) — it stays PENDING_MANAGER, not PENDING_HR, since that's still a
+    // manager-stage decision, just made by whoever now holds it (BR-35/36).
+    "#12 Rohan Casual 1d (SLA-breached under Vikram) escalated to Asha, still PENDING_MANAGER",
+    req12.state === 'PENDING_MANAGER' && String(req12.current_approver_id) === String(asha.employee_id),
+    { state: req12.state, current_approver_id: req12.current_approver_id },
+  );
+  const req12EscalationAudit = await AuditLog.findOne({
+    where: { action: 'SLA_ESCALATED', entity_type: 'leave_requests', entity_id: String(req12.request_id) },
+  });
+  check('#12 escalation was recorded in the audit trail', !!req12EscalationAudit, req12EscalationAudit?.audit_id);
+  const req12RequesterNotice = await Notification.findOne({
+    where: { recipient_id: rohan.employee_id, related_request_id: req12.request_id, template_key: 'REQUEST_ESCALATED' },
+  });
+  check(
+    "#12 Rohan was notified his request escalated, naming Asha as the new approver",
+    !!req12RequesterNotice && req12RequesterNotice.body.includes('Asha Rao'),
+    req12RequesterNotice?.body,
+  );
 
   const del1Eligibility = await delegationService.getEligibleDelegates(vikram.employee_id);
   check(

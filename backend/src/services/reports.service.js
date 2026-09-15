@@ -4,8 +4,8 @@ const {
 } = require('../models');
 const employeeService = require('./employee.service');
 
-/** LMS-074/075: filterable by date range, leave type, status (+ department/grade for HR). */
-async function leaveTakenReport({ from, to, leaveTypeId, status, departmentId, gradeId, scope, viewerId }) {
+/** LMS-074/075: filterable by date range, leave type, status, employee (+ department/grade for HR). */
+async function leaveTakenReport({ from, to, leaveTypeId, status, employeeId, departmentId, gradeId, scope, viewerId }) {
   const where = {};
   if (from) where.end_date = { [Op.gte]: from };
   if (to) where.start_date = { [Op.lte]: to };
@@ -16,10 +16,21 @@ async function leaveTakenReport({ from, to, leaveTypeId, status, departmentId, g
   if (departmentId) employeeWhere.department_id = departmentId;
   if (gradeId) employeeWhere.grade_id = gradeId;
 
-  // Scope: Manager sees their hierarchy only (BR-39); HR/Admin sees everyone (BR-40).
+  // Scope: Manager sees their hierarchy only (BR-39); HR/Admin sees everyone (BR-40). An
+  // employeeId filter must intersect with (never replace) that scope restriction — otherwise
+  // a Manager could pass an arbitrary employeeId to read someone outside their own team.
   if (scope === 'MANAGER') {
     const reports = await employeeService.getTeamBalances(viewerId); // reuses recursive hierarchy walk
-    where.employee_id = { [Op.in]: reports.map((r) => r.employee.employee_id) };
+    const teamIds = reports.map((r) => r.employee.employee_id);
+    if (employeeId) {
+      // -1 never matches a real BIGINT id — forces zero rows instead of leaking data when
+      // the requested employeeId isn't actually in this manager's own hierarchy.
+      where.employee_id = teamIds.some((id) => String(id) === String(employeeId)) ? employeeId : -1;
+    } else {
+      where.employee_id = { [Op.in]: teamIds };
+    }
+  } else if (employeeId) {
+    where.employee_id = employeeId;
   }
 
   return LeaveRequest.findAll({
@@ -33,10 +44,11 @@ async function leaveTakenReport({ from, to, leaveTypeId, status, departmentId, g
 }
 
 /** LMS-078: LOP report for downstream payroll consumption — no salary calculation performed here. */
-async function lopReport({ from, to }) {
+async function lopReport({ from, to, employeeId }) {
   const where = {};
   if (from) where.start_date = { [Op.gte]: from };
   if (to) where.end_date = { [Op.lte]: to };
+  if (employeeId) where.employee_id = employeeId;
 
   return LopRecord.findAll({
     where,

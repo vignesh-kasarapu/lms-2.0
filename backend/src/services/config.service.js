@@ -18,6 +18,10 @@ const CONFIG_DEFAULTS = {
   'sick_leave.alert_threshold_days': { value: '3', type: 'INT' },        // BR-43
   'sick_leave.alert_supervisor_enabled': { value: 'true', type: 'BOOL' },// BR-45
   'sick_leave.alert_hr_enabled': { value: 'true', type: 'BOOL' },        // BR-45
+  // 0 = auto: each employee's quota is half the optional holidays published for that leave
+  // year (rounded down). A positive value here overrides that computed default org-wide.
+  // See optionalHoliday.service.js#getOptionalHolidayQuota.
+  'holiday.optional_holiday_quota_override': { value: '0', type: 'INT' },
 };
 
 function cast(raw, type) {

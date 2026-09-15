@@ -9,6 +9,7 @@ import EmptyState from '../components/common/EmptyState';
 import Topbar from '../components/layout/Topbar';
 
 const WITHDRAWABLE = ['PENDING_MANAGER', 'PENDING_HR', 'REJECTED_PENDING_WITHDRAWAL'];
+const AWAITING_DECISION = ['PENDING_MANAGER', 'PENDING_HR', 'CANCELLATION_REQUESTED'];
 
 export default function MyRequests() {
   const [requests, setRequests] = useState([]);
@@ -41,6 +42,9 @@ export default function MyRequests() {
                     <span className="sm:hidden shrink-0"><StatusBadge state={r.state} /></span>
                   </div>
                   <p className="text-xs text-ink-500 mt-0.5">{r.LeaveType?.type_name} · {r.deducted_days ?? '—'} day(s)</p>
+                  {AWAITING_DECISION.includes(r.state) && r.currentApprover && (
+                    <p className="text-xs text-aurora-cyan mt-0.5">Pending with: {r.currentApprover.full_name}</p>
+                  )}
                 </div>
                 <div className="flex items-center flex-wrap gap-2 sm:shrink-0">
                   <span className="hidden sm:inline-flex"><StatusBadge state={r.state} /></span>

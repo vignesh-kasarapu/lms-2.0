@@ -24,7 +24,7 @@ function LMSLogo() {
   );
 }
 
-export default function LoginCard({ signInError }) {
+export default function LoginCard({ signInError, devAuthBypassEnabled }) {
   return (
     <div className="relative w-full max-w-[440px] mx-auto">
       {/* ambient glow behind the card: purple left, cyan right */}
@@ -99,7 +99,7 @@ export default function LoginCard({ signInError }) {
           Sign in with Microsoft
         </a>
 
-        {import.meta.env.DEV && (
+        {devAuthBypassEnabled && (
           <a
             href="/api/auth/dev-login"
             className="block mt-3 text-sm text-premium-textMuted hover:text-white transition-colors"

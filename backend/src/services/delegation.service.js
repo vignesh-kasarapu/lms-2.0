@@ -141,9 +141,16 @@ async function revoke(delegationId, actorId, actorIsHrAdmin = false) {
 }
 
 async function listMine(employeeId) {
+  // Employee.full_name is a DataTypes.VIRTUAL getter derived from first_name/last_name — an
+  // include that asks for only ['full_name'] selects none of the columns it actually reads,
+  // so it silently resolves to nothing useful (same root cause already fixed in listAll()
+  // below). Asking for first_name/last_name/employee_code forces Sequelize to select them.
   return Delegation.findAll({
     where: { [Op.or]: [{ nominator_id: employeeId }, { delegate_id: employeeId }] },
-    include: [{ model: Employee, as: 'nominator', attributes: ['full_name'] }, { model: Employee, as: 'delegate', attributes: ['full_name'] }],
+    include: [
+      { model: Employee, as: 'nominator', attributes: ['full_name', 'first_name', 'last_name', 'employee_code'] },
+      { model: Employee, as: 'delegate', attributes: ['full_name', 'first_name', 'last_name', 'employee_code'] },
+    ],
     order: [['from_date', 'DESC']],
   });
 }

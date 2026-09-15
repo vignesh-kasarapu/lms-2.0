@@ -26,6 +26,7 @@ router.patch('/leave-types/:leaveTypeId/policy', controller.leaveTypes.updatePol
 router.get('/holidays', controller.holidays.list);
 router.post('/holidays', controller.holidays.create);
 router.delete('/holidays/:holidayId', controller.holidays.remove);
+router.get('/holidays/optional-usage', controller.holidays.optionalUsage);
 
 router.get('/self-approval-permissions', controller.selfApproval.list);
 router.post('/self-approval-permissions', controller.selfApproval.grant);

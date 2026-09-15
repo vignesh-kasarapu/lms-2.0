@@ -32,10 +32,12 @@ const leaveTypes = {
   updatePolicy: async (req, res) => ok(res, await adminService.updateLeaveTypePolicy(req.params.leaveTypeId, req.body, req.currentUser.employeeId)),
 };
 
+const optionalHolidayService = require('../services/optionalHoliday.service');
 const holidays = {
   list: async (req, res) => ok(res, await adminService.listHolidays(req.query.leaveYearId)),
   create: async (req, res) => created(res, await adminService.addHoliday(req.body, req.currentUser.employeeId)),
   remove: async (req, res) => ok(res, await adminService.removeHoliday(req.params.holidayId, req.currentUser.employeeId)),
+  optionalUsage: async (req, res) => ok(res, await optionalHolidayService.listOptionalHolidayUsage(req.query.leaveYearId)),
 };
 
 const selfApprovalService = require('../services/selfApproval.service');

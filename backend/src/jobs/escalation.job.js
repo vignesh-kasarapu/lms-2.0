@@ -63,12 +63,27 @@ async function escalateOneLevel(request) {
     priorValue: { current_approver_id: priorApproverId }, newValue: { current_approver_id: request.current_approver_id },
   });
 
+  // Resolved by ID rather than reused from `nextApprover` so the name is available even in the
+  // HR-fallback branch (findHrAdminQueueId only returns an ID) — both the prior approver and the
+  // requester need to know WHO it escalated to, not just that it moved.
+  const newApprover = await Employee.findByPk(request.current_approver_id);
+  const newApproverName = newApprover?.full_name || 'HR/Admin';
+
   await notificationService.notify({
     recipientId: priorApproverId, templateKey: 'ESCALATION_NOTICE_TO_PRIOR_APPROVER',
+    tokens: { requestId: request.request_id, newApproverName },
     relatedRequestId: request.request_id,
   });
   await notificationService.notify({
     recipientId: request.current_approver_id, templateKey: 'NEW_REQUEST_AWAITING_DECISION',
+    relatedRequestId: request.request_id,
+  });
+  // The requester themselves was never told their request moved at all until now — without
+  // this they'd only discover an escalation happened by noticing a new name in the (previously
+  // empty) approval timeline, with no explanation of what changed or why.
+  await notificationService.notify({
+    recipientId: request.employee_id, templateKey: 'REQUEST_ESCALATED',
+    tokens: { requestId: request.request_id, newApproverName },
     relatedRequestId: request.request_id,
   });
 }

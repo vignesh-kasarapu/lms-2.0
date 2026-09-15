@@ -3,6 +3,7 @@ const capacityService = require('../services/teamCapacity.service');
 const encashmentService = require('../services/encashment.service');
 const compOffService = require('../services/compOff.service');
 const calendarFeedService = require('../services/calendarFeed.service');
+const employeeService = require('../services/employee.service');
 const { ok, created } = require('../utils/apiResponse');
 
 // --- Blackout periods (LMS-085), HR/Admin ---
@@ -39,7 +40,19 @@ const encashment = {
 
 // --- Compensatory off (LMS-083), Manager/HR credits, employee can view own ---
 const compOff = {
-  credit: async (req, res) => created(res, await compOffService.creditCompOff({ ...req.body, approvedBy: req.currentUser.employeeId })),
+  // creditCompOff itself doesn't know who the caller is relative to the target employee — a
+  // Manager (unlike HR/Admin) may only credit their own reporting line, checked here since
+  // this is the one place both the actor's role and the target employee are both in scope.
+  credit: async (req, res) => {
+    const isHrAdmin = req.currentUser.roles.includes('HR_ADMIN');
+    if (!isHrAdmin) {
+      const inHierarchy = await employeeService.isInManagerHierarchy(req.currentUser.employeeId, req.body.employeeId);
+      if (!inHierarchy) {
+        return res.status(403).json({ success: false, error: { code: 'PERMISSION_DENIED', message: 'You can only credit compensatory off for your own team.' } });
+      }
+    }
+    return created(res, await compOffService.creditCompOff({ ...req.body, approvedBy: req.currentUser.employeeId }));
+  },
   mine: async (req, res) => ok(res, await compOffService.listForEmployee(req.currentUser.employeeId)),
 };
 
