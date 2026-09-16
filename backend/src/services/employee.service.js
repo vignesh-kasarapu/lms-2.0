@@ -314,4 +314,4 @@ async function listWatchableEmployees() {
   return [...seen.values()];
 }
 
-module.exports = { getDashboard, listEmployees, onboardEmployee, updateEmployeeDetails, setReportingManager, getTeamBalances, getTeamCalendar, getPeerCalendar, listWatchableEmployees, isInManagerHierarchy };
+module.exports = { getDashboard, listEmployees, onboardEmployee, updateEmployeeDetails, setReportingManager, getTeamBalances, getTeamCalendar, getPeerCalendar, listWatchableEmployees, isInManagerHierarchy, getAllReportsRecursive };

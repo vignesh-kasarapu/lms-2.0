@@ -6,6 +6,7 @@ import EmptyState from '../components/common/EmptyState';
 import Table from '../components/common/Table';
 import StandingWatcherControl from '../components/common/StandingWatcherControl';
 import CompOffControl from '../components/common/CompOffControl';
+import OptionalHolidayControl from '../components/common/OptionalHolidayControl';
 import Topbar from '../components/layout/Topbar';
 
 const COLUMNS = [
@@ -139,6 +140,7 @@ export default function MyTeam() {
                       <div className="flex flex-col gap-1.5">
                         <StandingWatcherControl employeeId={employee.employee_id} employeeName={employee.full_name} />
                         <CompOffControl employeeId={employee.employee_id} employeeName={employee.full_name} />
+                        <OptionalHolidayControl employeeId={employee.employee_id} employeeName={employee.full_name} />
                       </div>
                     </td>
                   </tr>
@@ -183,6 +185,7 @@ export default function MyTeam() {
                   <div className="mt-3 pt-3 border-t border-frost/10 flex flex-col gap-1.5">
                     <StandingWatcherControl employeeId={employee.employee_id} employeeName={employee.full_name} />
                     <CompOffControl employeeId={employee.employee_id} employeeName={employee.full_name} />
+                    <OptionalHolidayControl employeeId={employee.employee_id} employeeName={employee.full_name} />
                   </div>
                 </div>
               );

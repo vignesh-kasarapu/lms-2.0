@@ -4,8 +4,8 @@ const {
 } = require('../models');
 const employeeService = require('./employee.service');
 
-/** LMS-074/075: filterable by date range, leave type, status, employee (+ department/grade for HR). */
-async function leaveTakenReport({ from, to, leaveTypeId, status, employeeId, departmentId, gradeId, scope, viewerId }) {
+/** LMS-074/075: filterable by date range, leave type, status, employee, manager (+ department/grade for HR). */
+async function leaveTakenReport({ from, to, leaveTypeId, status, employeeId, departmentId, gradeId, managerId, scope, viewerId }) {
   const where = {};
   if (from) where.end_date = { [Op.gte]: from };
   if (to) where.start_date = { [Op.lte]: to };
@@ -19,18 +19,26 @@ async function leaveTakenReport({ from, to, leaveTypeId, status, employeeId, dep
   // Scope: Manager sees their hierarchy only (BR-39); HR/Admin sees everyone (BR-40). An
   // employeeId filter must intersect with (never replace) that scope restriction — otherwise
   // a Manager could pass an arbitrary employeeId to read someone outside their own team.
+  let scopeIds = null;
   if (scope === 'MANAGER') {
     const reports = await employeeService.getTeamBalances(viewerId); // reuses recursive hierarchy walk
-    const teamIds = reports.map((r) => r.employee.employee_id);
-    if (employeeId) {
-      // -1 never matches a real BIGINT id — forces zero rows instead of leaking data when
-      // the requested employeeId isn't actually in this manager's own hierarchy.
-      where.employee_id = teamIds.some((id) => String(id) === String(employeeId)) ? employeeId : -1;
-    } else {
-      where.employee_id = { [Op.in]: teamIds };
-    }
-  } else if (employeeId) {
-    where.employee_id = employeeId;
+    scopeIds = reports.map((r) => r.employee.employee_id);
+  }
+
+  // managerId filter (HR/Admin picking "show me this manager's team"): intersect with any
+  // existing scope restriction the same way employeeId does, so it can only narrow, never widen.
+  if (managerId) {
+    const managerReports = await employeeService.getAllReportsRecursive(managerId);
+    const managerTeamIds = managerReports.map((e) => e.employee_id);
+    scopeIds = scopeIds ? scopeIds.filter((id) => managerTeamIds.some((m) => String(m) === String(id))) : managerTeamIds;
+  }
+
+  if (employeeId) {
+    // -1 never matches a real BIGINT id — forces zero rows instead of leaking data when
+    // the requested employeeId isn't actually within the active scope restriction(s).
+    where.employee_id = (!scopeIds || scopeIds.some((id) => String(id) === String(employeeId))) ? employeeId : -1;
+  } else if (scopeIds) {
+    where.employee_id = { [Op.in]: scopeIds };
   }
 
   return LeaveRequest.findAll({
@@ -44,11 +52,18 @@ async function leaveTakenReport({ from, to, leaveTypeId, status, employeeId, dep
 }
 
 /** LMS-078: LOP report for downstream payroll consumption — no salary calculation performed here. */
-async function lopReport({ from, to, employeeId }) {
+async function lopReport({ from, to, employeeId, managerId }) {
   const where = {};
   if (from) where.start_date = { [Op.gte]: from };
   if (to) where.end_date = { [Op.lte]: to };
   if (employeeId) where.employee_id = employeeId;
+  if (managerId) {
+    const managerReports = await employeeService.getAllReportsRecursive(managerId);
+    const managerTeamIds = managerReports.map((e) => e.employee_id);
+    where.employee_id = employeeId
+      ? (managerTeamIds.some((id) => String(id) === String(employeeId)) ? employeeId : -1)
+      : { [Op.in]: managerTeamIds };
+  }
 
   return LopRecord.findAll({
     where,

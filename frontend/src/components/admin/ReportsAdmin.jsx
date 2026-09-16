@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FileBarChart, AlertTriangle } from 'lucide-react';
 import { getLeaveTakenReport, getLopReport } from '../../api/reports';
-import { getDashboard, listEmployees } from '../../api/employees';
+import { getDashboard, listEmployees, getWatchableEmployees } from '../../api/employees';
 import { listDepartments } from '../../api/admin';
 import { useAuth } from '../../context/AuthContext';
 import GlassCard from '../common/GlassCard';
@@ -13,7 +13,7 @@ const STATES = [
   'WITHDRAWN', 'LOP_APPLIED', 'CANCELLATION_REQUESTED', 'CANCELLED',
 ];
 
-const emptyFilters = { from: '', to: '', leaveTypeId: '', status: '', employeeId: '', departmentId: '' };
+const emptyFilters = { from: '', to: '', leaveTypeId: '', status: '', employeeId: '', departmentId: '', managerId: '' };
 
 export default function ReportsAdmin() {
   const { hasRole } = useAuth();
@@ -27,6 +27,7 @@ export default function ReportsAdmin() {
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [managers, setManagers] = useState([]);
   // Mirrors ApplyLeave.jsx's previewRequestId ref pattern: switching views/filters while a
   // fetch for the OLD combination is still in flight must not let that late response render
   // through the NEW combination's field-mapping. Each fetch only applies its result if it's
@@ -48,6 +49,7 @@ export default function ReportsAdmin() {
     if (!isHrAdmin) return;
     listDepartments().then((res) => setDepartments(res.data)).catch(() => {});
     listEmployees().then((res) => setEmployees(res.data)).catch(() => {});
+    getWatchableEmployees().then((res) => setManagers(res.data)).catch(() => {});
   }, [isHrAdmin]);
 
   useEffect(() => {
@@ -109,6 +111,10 @@ export default function ReportsAdmin() {
             <select className="glass-input !py-2 text-xs" value={filters.departmentId} onChange={(e) => updateFilter('departmentId', e.target.value)}>
               <option value="">All departments</option>
               {departments.map((d) => <option key={d.department_id} value={d.department_id}>{d.department_name}</option>)}
+            </select>
+            <select className="glass-input !py-2 text-xs" value={filters.managerId} onChange={(e) => updateFilter('managerId', e.target.value)}>
+              <option value="">All managers</option>
+              {managers.map((m) => <option key={m.employee_id} value={m.employee_id}>{m.full_name}</option>)}
             </select>
           </>
         )}
