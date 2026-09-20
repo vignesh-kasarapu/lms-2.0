@@ -19,9 +19,9 @@ export default function AppLayout({ title }) {
   }, [location.pathname, location.search]);
 
   return (
-    <div className="flex h-screen w-full bg-transparent overflow-hidden">
+    <div className="flex h-screen w-full overflow-hidden" style={{ background: 'var(--color-bg)' }}>
       <Sidebar mobileOpen={mobileNavOpen} onCloseMobile={() => setMobileNavOpen(false)} />
-      <main ref={mainRef} className="flex-1 h-screen overflow-y-auto overflow-x-hidden px-4 sm:px-6 md:px-8 py-5 pb-24 md:pb-8 w-full max-w-full">
+      <main ref={mainRef} className="main flex-1 h-screen overflow-y-auto overflow-x-hidden pb-24 sm:pb-6 w-full max-w-full">
         <Outlet context={{ title }} />
       </main>
       <BottomNav onOpenMenu={() => setMobileNavOpen(true)} />

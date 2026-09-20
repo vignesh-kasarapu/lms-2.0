@@ -17,6 +17,10 @@ function mapSequelizeError(err) {
   if (err.name === 'SequelizeDatabaseError') {
     return { status: 400, code: 'INVALID_REQUEST', message: 'The request could not be processed with the given values.' };
   }
+  if (err.name === 'MulterError') {
+    const message = err.code === 'LIMIT_FILE_SIZE' ? 'File is too large.' : 'The uploaded file could not be processed.';
+    return { status: 400, code: 'VALIDATION_ERROR', message };
+  }
   return null;
 }
 

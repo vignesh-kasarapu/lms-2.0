@@ -24,32 +24,17 @@ export default function BottomNav({ onOpenMenu }) {
       ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 p-3 z-30">
-      <div className="glass-panel-strong flex items-center justify-around py-2">
-        {items.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-medium ${
-                isActive ? 'text-aurora-violet' : 'text-ink-500'
-              }`
-            }
-          >
-            <Icon className="w-5 h-5" strokeWidth={1.75} />
-            {label}
-          </NavLink>
-        ))}
-        <button
-          type="button"
-          onClick={onOpenMenu}
-          className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-medium text-ink-500"
-        >
-          <Menu className="w-5 h-5" strokeWidth={1.75} />
-          Menu
-        </button>
-      </div>
+    <nav className="nav sm:hidden fixed bottom-0 inset-x-0 z-30" aria-label="Main">
+      {items.map(({ to, icon: Icon, label }) => (
+        <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => (isActive ? 'is-active' : '')}>
+          <Icon className="w-5 h-5" strokeWidth={1.75} />
+          <span>{label}</span>
+        </NavLink>
+      ))}
+      <button type="button" onClick={onOpenMenu}>
+        <Menu className="w-5 h-5" strokeWidth={1.75} />
+        <span>Menu</span>
+      </button>
     </nav>
   );
 }

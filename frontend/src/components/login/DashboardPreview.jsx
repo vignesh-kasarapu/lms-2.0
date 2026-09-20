@@ -16,26 +16,16 @@ const CAL_MARKS = { 15: 'rejected', 16: 'selected', 23: 'rejected', 29: 'approve
 
 function PreviewSidebar() {
   return (
-    <div
-      className="w-[150px] shrink-0 flex flex-col gap-1 pr-3 py-4 pl-4"
-      style={{ borderRight: '1px solid rgba(255,255,255,0.08)' }}
-    >
+    <div className="w-[150px] shrink-0 flex flex-col gap-1 pr-3 py-4 pl-4 border-r border-border">
       <div className="flex items-center gap-2 mb-4 px-1">
-        <div
-          className="w-5 h-5 rounded-md shrink-0"
-          style={{ background: 'linear-gradient(135deg, #7C3AED, #22D3EE)' }}
-        />
-        <span className="text-[11px] font-display font-bold text-premium-text">LMS 2.0</span>
+        <img src="/brand/tektalis.png" alt="" style={{ height: 10 }} />
       </div>
       {NAV_ITEMS.map(({ icon: Icon, label, active }) => (
         <div
           key={label}
-          className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[10.5px]"
-          style={
-            active
-              ? { background: 'rgba(139,92,246,0.18)', color: '#C4B5FD' }
-              : { color: '#64748B' }
-          }
+          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[10.5px] ${
+            active ? 'bg-tint-1 text-accent-text' : 'muted'
+          }`}
         >
           <Icon size={12} className="shrink-0" />
           <span className="truncate">{label}</span>
@@ -49,33 +39,26 @@ function PreviewHeader() {
   return (
     <div className="flex items-center justify-between mb-3.5">
       <div>
-        <p className="text-[13px] font-semibold text-premium-text leading-tight">Welcome back!</p>
-        <p className="text-[10.5px] text-premium-textFaint">Here's your leave overview</p>
+        <p className="text-[13px] font-semibold leading-tight">Welcome back!</p>
+        <p className="text-[10.5px] muted">Here's your leave overview</p>
       </div>
-      <div
-        className="w-7 h-7 rounded-full shrink-0"
-        style={{ background: 'linear-gradient(135deg, #22D3EE, #8B5CF6)' }}
-      />
+      <div className="w-7 h-7 rounded-full shrink-0 bg-accent" />
     </div>
   );
 }
 
 function PreviewStats() {
   const stats = [
-    { value: '18', label: 'Available Leave', color: '#F8FAFC' },
-    { value: '2', label: 'Pending Requests', color: '#FBBF24' },
-    { value: '12', label: 'Used This Year', color: '#F8FAFC' },
+    { value: '18', label: 'Available Leave', className: '' },
+    { value: '2', label: 'Pending Requests', className: 'text-warning' },
+    { value: '12', label: 'Used This Year', className: '' },
   ];
   return (
     <div className="grid grid-cols-3 gap-2 mb-3">
       {stats.map((s) => (
-        <div
-          key={s.label}
-          className="rounded-lg px-2.5 py-2 text-center"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-        >
-          <p className="text-[15px] font-bold leading-none" style={{ color: s.color }}>{s.value}</p>
-          <p className="text-[9px] text-premium-textFaint mt-1.5 leading-tight">{s.label}</p>
+        <div key={s.label} className="rounded-lg px-2.5 py-2 text-center bg-surface border border-border">
+          <p className={`text-[15px] font-bold leading-none ${s.className}`}>{s.value}</p>
+          <p className="text-[9px] muted mt-1.5 leading-tight">{s.label}</p>
         </div>
       ))}
     </div>
@@ -84,27 +67,26 @@ function PreviewStats() {
 
 function PreviewCalendar() {
   return (
-    <div className="rounded-lg p-2.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-      <p className="text-[10px] font-semibold text-premium-textSecondary mb-1.5">April 2025</p>
+    <div className="rounded-lg p-2.5 bg-surface border border-border">
+      <p className="text-[10px] font-semibold mb-1.5">April 2025</p>
       <div className="grid grid-cols-7 gap-y-1 text-center">
         {CAL_DAYS.map((d, i) => (
-          <span key={`${d}-${i}`} className="text-[7px] text-premium-textFaint">{d}</span>
+          <span key={`${d}-${i}`} className="text-[7px] muted">{d}</span>
         ))}
         {CAL_CELLS.map((day, i) => {
           const mark = day ? CAL_MARKS[day] : null;
           return (
             <span
               key={i}
-              className="text-[8px] leading-[16px] rounded-full"
-              style={
+              className={`text-[8px] leading-[16px] rounded-full ${
                 mark === 'selected'
-                  ? { background: '#7C3AED', color: '#F8FAFC', fontWeight: 600 }
+                  ? 'bg-accent text-accent-contrast font-semibold'
                   : mark === 'rejected'
-                  ? { background: 'rgba(251,113,133,0.20)', color: '#FB7185' }
+                  ? 'bg-danger-bg text-danger-text'
                   : mark === 'approved'
-                  ? { background: 'rgba(34,211,238,0.20)', color: '#22D3EE' }
-                  : { color: '#64748B' }
-              }
+                  ? 'bg-success-bg text-success'
+                  : 'muted'
+              }`}
             >
               {day || ''}
             </span>
@@ -117,21 +99,21 @@ function PreviewCalendar() {
 
 function UpcomingLeave() {
   const items = [
-    { color: '#8B5CF6', label: 'Annual Leave', date: 'Apr 16 – Apr 18' },
-    { color: '#FB7185', label: 'Sick Leave', date: 'Apr 15' },
-    { color: '#22D3EE', label: 'Personal Leave', date: 'May 5 – May 6' },
+    { className: 'bg-accent', label: 'Annual Leave', date: 'Apr 16 – Apr 18' },
+    { className: 'bg-danger', label: 'Sick Leave', date: 'Apr 15' },
+    { className: 'bg-tint-3', label: 'Personal Leave', date: 'May 5 – May 6' },
   ];
   return (
-    <div className="rounded-lg p-2.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-      <p className="text-[10px] font-semibold text-premium-textSecondary mb-1.5">Upcoming Leave</p>
+    <div className="rounded-lg p-2.5 bg-surface border border-border">
+      <p className="text-[10px] font-semibold mb-1.5">Upcoming Leave</p>
       <div className="flex flex-col gap-1.5">
         {items.map((it) => (
           <div key={it.label} className="flex items-start gap-1.5 text-[9px]">
-            <span className="w-1.5 h-1.5 rounded-full mt-0.5 shrink-0" style={{ background: it.color }} />
-            <span className="text-premium-textSecondary">
+            <span className={`w-1.5 h-1.5 rounded-full mt-0.5 shrink-0 ${it.className}`} />
+            <span>
               {it.label}
               <br />
-              <span className="text-premium-textFaint">{it.date}</span>
+              <span className="muted">{it.date}</span>
             </span>
           </div>
         ))}
@@ -142,20 +124,10 @@ function UpcomingLeave() {
 
 function FloatingCallout() {
   return (
-    <div
-      className="absolute -bottom-7 -right-8 w-[190px] px-4 py-3.5 rounded-2xl motion-safe:animate-float-slow z-10"
-      style={{
-        background: 'rgba(17,24,39,0.65)',
-        border: '1px solid rgba(34,211,238,0.25)',
-        backdropFilter: 'blur(16px)',
-        boxShadow: '0 16px 40px rgba(0,0,0,0.4), 0 0 24px rgba(34,211,238,0.10)',
-        transform: 'rotate(2deg)',
-        '--tw-rotate': '2deg',
-      }}
-    >
+    <div className="absolute -bottom-7 -right-8 w-[190px] px-4 py-3.5 rounded-2xl z-10 bg-surface border border-border shadow-card">
       <div className="flex items-center gap-2">
-        <CalendarCheck2 size={16} style={{ color: '#22D3EE' }} className="shrink-0" />
-        <p className="text-[12px] font-medium text-premium-text leading-snug">
+        <CalendarCheck2 size={16} className="shrink-0 text-accent-text" />
+        <p className="text-[12px] font-medium leading-snug">
           Work-life balance starts with you.
         </p>
       </div>
@@ -165,18 +137,8 @@ function FloatingCallout() {
 
 export default function DashboardPreview() {
   return (
-    <div className="relative hidden lg:block w-full max-w-[700px] mt-8 motion-safe:animate-float">
-      <div
-        className="grid grid-cols-[150px,1fr] rounded-[22px] overflow-hidden"
-        style={{
-          background: 'rgba(20,30,60,0.55)',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(139,92,246,0.35)',
-          boxShadow:
-            '0 30px 80px rgba(0,0,0,0.5), inset 2px 0 24px -18px rgba(139,92,246,0.6), inset -2px 0 24px -18px rgba(34,211,238,0.5)',
-          transform: 'perspective(1200px) rotateX(2deg) rotateY(-4deg) rotateZ(-1deg)',
-        }}
-      >
+    <div className="relative hidden lg:block w-full max-w-[700px] mt-8">
+      <div className="grid grid-cols-[150px,1fr] rounded-[22px] overflow-hidden bg-surface border border-border shadow-popover">
         <PreviewSidebar />
         <div className="px-4 py-4 min-w-0">
           <PreviewHeader />
@@ -187,12 +149,6 @@ export default function DashboardPreview() {
           </div>
         </div>
       </div>
-
-      {/* soft shadow beneath the floating dashboard, standing in for a reflection */}
-      <div
-        className="absolute left-[8%] right-[8%] -bottom-6 h-8 rounded-full"
-        style={{ background: 'rgba(0,0,0,0.45)', filter: 'blur(24px)' }}
-      />
 
       <FloatingCallout />
     </div>

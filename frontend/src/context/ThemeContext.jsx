@@ -1,30 +1,45 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { applyPreset, applyMode, nextPreset, nextMode } from '../theme/theme-switch';
 
 const ThemeContext = createContext(null);
-const STORAGE_KEY = 'lms-theme';
+const PRESET_KEY = 'lms-preset';
+const MODE_KEY = 'lms-mode';
+
+function readStored(key, fallback) {
+  try {
+    return localStorage.getItem(key) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStored(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Private browsing / storage disabled — preference just won't persist across reloads.
+  }
+}
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) === 'light' ? 'light' : 'dark';
-    } catch {
-      return 'dark';
-    }
-  });
+  const [preset, setPreset] = useState(() => readStored(PRESET_KEY, 'harbour'));
+  const [mode, setMode] = useState(() => readStored(MODE_KEY, 'system'));
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    try {
-      localStorage.setItem(STORAGE_KEY, theme);
-    } catch {
-      // Private browsing / storage disabled — theme just won't persist across reloads.
-    }
-  }, [theme]);
+    applyPreset(preset);
+    writeStored(PRESET_KEY, preset);
+  }, [preset]);
 
-  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
+  useEffect(() => {
+    applyMode(mode);
+    writeStored(MODE_KEY, mode);
+  }, [mode]);
+
+  const cyclePreset = () => setPreset((p) => nextPreset(p));
+  const cycleMode = () => setMode((m) => nextMode(m));
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ preset, mode, cyclePreset, cycleMode }}>
       {children}
     </ThemeContext.Provider>
   );

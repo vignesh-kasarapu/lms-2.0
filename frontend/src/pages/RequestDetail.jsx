@@ -48,7 +48,7 @@ export default function RequestDetail() {
     removeWatcher(requestId, watcherId).then(load).catch((err) => setWatcherError(err.message));
   };
 
-  if (loading) return <><Topbar title="Request detail" /><div className="h-64 glass-panel animate-pulse" /></>;
+  if (loading) return <><Topbar title="Request detail" /><div className="skel" style={{ height: 256, borderRadius: 'var(--radius-lg)' }} /></>;
   if (!request) return <><Topbar title="Request detail" /><GlassCard>Request not found.</GlassCard></>;
 
   return (
@@ -57,13 +57,11 @@ export default function RequestDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4">
           <GlassCard>
-            <div className="flex items-start justify-between mb-4">
+            <div className="flex items-start justify-between gap-3 mb-4">
               <div>
-                <p className="text-lg font-display font-bold text-ink-100">
-                  {request.start_date} → {request.end_date}
-                </p>
-                <p className="text-sm text-ink-500 mt-0.5">
-                  {request.LeaveType?.type_name} · {request.deducted_days} day(s)
+                <p className="h2">{request.start_date} → {request.end_date}</p>
+                <p className="small muted mt-1">
+                  {request.LeaveType?.type_name} · <span className="num">{request.deducted_days}</span> day(s)
                   {request.is_half_day && ` · ${request.half_day_portion?.toLowerCase()} half`}
                 </p>
               </div>
@@ -71,33 +69,33 @@ export default function RequestDetail() {
             </div>
 
             {(request.is_advance_leave || request.is_long_leave) && (
-              <div className="flex gap-2 mb-4">
-                {request.is_advance_leave && <Flag label="Advance leave" />}
-                {request.is_long_leave && <Flag label="Long leave — HR stage" />}
+              <div className="flex gap-2 flex-wrap mb-4">
+                {request.is_advance_leave && <span className="pill pill--warning">Advance leave</span>}
+                {request.is_long_leave && <span className="pill pill--danger">Long leave — HR stage</span>}
               </div>
             )}
 
             {request.reason && (
               <>
-                <p className="text-xs font-medium text-ink-500 mb-1.5">Reason</p>
-                <p className="text-sm text-ink-300 bg-frost/[0.03] rounded-xl px-4 py-3">{request.reason}</p>
+                <p className="small muted mb-1.5">Reason</p>
+                <p className="small bg-tint-2 rounded-md px-space-4 py-space-3">{request.reason}</p>
               </>
             )}
           </GlassCard>
 
           <GlassCard>
-            <h3 className="font-display font-bold text-ink-100 mb-4 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-aurora-cyan" /> Approval timeline
+            <h3 className="h3 mb-4 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-accent-text" /> Approval timeline
             </h3>
             {AWAITING_DECISION.includes(request.state) && request.currentApprover && (
-              <p className="text-sm text-aurora-cyan mb-3">
+              <p className="small mb-3">
                 Currently pending with: <span className="font-medium">{request.currentApprover.full_name}</span>
               </p>
             )}
             {request.scope === 'WATCHER_MASKED' && !request.approvals ? (
-              <p className="text-sm text-ink-500">Approval details are not shown in this limited view.</p>
+              <p className="small muted">Approval details are not shown in this limited view.</p>
             ) : !request.approvals?.length ? (
-              <p className="text-sm text-ink-500">
+              <p className="small muted">
                 {AWAITING_DECISION.includes(request.state) ? 'No decision yet at this stage.' : 'No decisions recorded yet.'}
               </p>
             ) : (
@@ -105,17 +103,17 @@ export default function RequestDetail() {
                 {request.approvals.map((a) => (
                   <div key={a.approval_id} className="flex items-start gap-3">
                     {a.decision === 'APPROVE' ? (
-                      <CheckCircle2 className="w-4 h-4 text-status-approved mt-0.5 shrink-0" />
+                      <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
                     ) : (
-                      <XCircle className="w-4 h-4 text-status-rejected mt-0.5 shrink-0" />
+                      <XCircle className="w-4 h-4 text-danger-text mt-0.5 shrink-0" />
                     )}
-                    <div className="text-sm">
-                      <p className="text-ink-200">
+                    <div className="small">
+                      <p>
                         <span className="font-medium">{a.stage}</span> · {a.decision === 'APPROVE' ? 'Approved' : 'Rejected'}
                         {a.on_behalf_of_id && ' (as delegate)'}
                       </p>
-                      {a.reason && <p className="text-ink-500 text-xs mt-0.5">{a.reason}</p>}
-                      <p className="text-ink-600 text-xs mt-0.5">{new Date(a.decision_timestamp).toLocaleString()}</p>
+                      {a.reason && <p className="muted small mt-0.5">{a.reason}</p>}
+                      <p className="muted small mt-0.5">{new Date(a.decision_timestamp).toLocaleString()}</p>
                     </div>
                   </div>
                 ))}
@@ -126,18 +124,18 @@ export default function RequestDetail() {
 
         <div className="space-y-4">
           <GlassCard>
-            <h3 className="font-display font-bold text-ink-100 mb-3 flex items-center gap-2 text-sm">
-              <Eye className="w-4 h-4 text-aurora-violet" /> Watchers
+            <h3 className="h3 mb-3 flex items-center gap-2">
+              <Eye className="w-4 h-4 text-accent-text" /> Watchers
             </h3>
             {!request.watchers?.length ? (
-              <p className="text-xs text-ink-500 mb-3">No watchers on this request.</p>
+              <p className="small muted mb-3">No watchers on this request.</p>
             ) : (
               <div className="space-y-2 mb-3">
                 {request.watchers.map((w) => (
-                  <div key={w.watcher_id} className="flex items-center justify-between text-sm text-ink-300 bg-frost/[0.03] rounded-lg px-3 py-2">
+                  <div key={w.watcher_id} className="flex items-center justify-between small bg-tint-2 rounded-sm px-space-3 py-space-2">
                     <span>{w.watcherEmployee?.full_name || `Employee #${w.watcher_employee_id}`}</span>
                     {hasRole('MANAGER', 'HR_ADMIN') && (
-                      <button onClick={() => removeWatcherClick(w.watcher_id)} className="text-ink-500 hover:text-status-rejected transition-colors">
+                      <button onClick={() => removeWatcherClick(w.watcher_id)} className="muted" aria-label="Remove watcher">
                         <X className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -147,35 +145,35 @@ export default function RequestDetail() {
             )}
 
             {hasRole('MANAGER', 'HR_ADMIN') && candidates.length > 0 && (
-              <div className="flex gap-2 pt-2 border-t border-frost/5">
-                <select className="glass-input !py-2 text-xs" value={picked} onChange={(e) => setPicked(e.target.value)}>
+              <div className="flex gap-2 pt-2" style={{ borderTop: '1px solid var(--color-border)' }}>
+                <select className="input" value={picked} onChange={(e) => setPicked(e.target.value)}>
                   <option value="">Add a watcher…</option>
                   {candidates
                     .filter((c) => !request.watchers?.some((w) => w.watcher_employee_id === c.employee_id))
                     .map((c) => <option key={c.employee_id} value={c.employee_id}>{c.full_name}</option>)}
                 </select>
-                <PrimaryButton onClick={submitWatcher} disabled={!picked || adding} className="!px-3 !py-2">
+                <PrimaryButton onClick={submitWatcher} disabled={!picked || adding}>
                   <UserPlus className="w-3.5 h-3.5" />
                 </PrimaryButton>
               </div>
             )}
-            {watcherError && <p className="text-xs text-status-rejected mt-2">{watcherError}</p>}
+            {watcherError && <p className="error-msg mt-2">{watcherError}</p>}
           </GlassCard>
 
           {request.LeaveType?.permits_attachments && (
             <GlassCard>
-              <h3 className="font-display font-bold text-ink-100 mb-3 flex items-center gap-2 text-sm">
-                <Paperclip className="w-4 h-4 text-aurora-violet" /> Attachments
+              <h3 className="h3 mb-3 flex items-center gap-2">
+                <Paperclip className="w-4 h-4 text-accent-text" /> Attachments
               </h3>
               {!request.attachments?.length ? (
-                <p className="text-xs text-ink-500">No attachments uploaded.</p>
+                <p className="small muted">No attachments uploaded.</p>
               ) : (
                 <div className="space-y-2">
                   {request.attachments.map((a) => (
                     <a key={a.attachment_id} href={attachmentDownloadUrl(a.attachment_id)} target="_blank" rel="noreferrer"
-                      className="flex items-center justify-between text-sm bg-frost/[0.03] rounded-lg px-3 py-2 hover:bg-frost/[0.06] transition-colors">
-                      <span className="text-ink-200 truncate">{a.file_name}</span>
-                      <span className="text-xs text-ink-500 shrink-0 ml-2">{(a.size_bytes / 1024).toFixed(0)} KB</span>
+                      className="flex items-center justify-between small bg-tint-2 rounded-sm px-space-3 py-space-2">
+                      <span className="truncate">{a.file_name}</span>
+                      <span className="muted shrink-0 ml-2">{(a.size_bytes / 1024).toFixed(0)} KB</span>
                     </a>
                   ))}
                 </div>
@@ -185,13 +183,5 @@ export default function RequestDetail() {
         </div>
       </div>
     </>
-  );
-}
-
-function Flag({ label }) {
-  return (
-    <span className="inline-flex items-center text-[11px] font-medium text-status-advance bg-status-advance/10 border border-status-advance/25 rounded-full px-2 py-0.5">
-      {label}
-    </span>
   );
 }

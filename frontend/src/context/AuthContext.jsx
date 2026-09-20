@@ -8,9 +8,10 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const refreshUser = () => getMe().then((res) => setUser(res.data));
+
   useEffect(() => {
-    getMe()
-      .then((res) => setUser(res.data))
+    refreshUser()
       .catch((err) => setError(err))
       .finally(() => setLoading(false));
   }, []);
@@ -18,7 +19,7 @@ export function AuthProvider({ children }) {
   const hasRole = (...roles) => roles.some((r) => user?.roles?.includes(r));
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, hasRole }}>
+    <AuthContext.Provider value={{ user, loading, error, hasRole, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

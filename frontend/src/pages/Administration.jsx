@@ -21,9 +21,7 @@ export default function Administration() {
   const activeSection = searchParams.get('section') || 'employees';
 
   useEffect(() => {
-    document.body.classList.add('theme-admin');
     getDashboard().then((res) => setLeaveYearId(res.data.leaveYear?.leave_year_id));
-    return () => document.body.classList.remove('theme-admin');
   }, []);
 
   const sections = {
@@ -45,37 +43,32 @@ export default function Administration() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-4 border-b border-frost/10 pb-5">
+      <div className="flex items-center justify-between gap-4 border-b border-border pb-5">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-400">Administration</p>
-          <h1 className="mt-1 text-2xl font-display font-extrabold tracking-tight text-ink-50">{active.label}</h1>
+          <p className="small muted">Administration</p>
+          <h1 className="h2">{active.label}</h1>
         </div>
-        <div className="hidden rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold text-amber-200 sm:block">
-          HR Admin workspace
-        </div>
+        <span className="hidden pill pill--accent sm:inline-flex">HR admin workspace</span>
       </div>
 
       {/* Mobile-only section switcher: the sidebar's admin submenu (desktop-only)
           is the only other way to change sections, so this chip bar is what makes
           every section reachable without reopening the mobile nav each time. */}
-      <div className="md:hidden -mx-1 flex gap-2 overflow-x-auto pb-1 px-1">
+      <div className="tabs md:hidden overflow-x-auto" role="tablist">
         {Object.entries(sections).map(([key, section]) => (
           <button
             key={key}
             type="button"
+            role="tab"
+            aria-selected={activeSection === key}
             onClick={() => navigate(`/administration?section=${key}`)}
-            className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition-colors ${
-              activeSection === key
-                ? 'bg-amber-400/20 text-amber-200 border border-amber-400/40'
-                : 'bg-frost/[0.05] text-ink-300 border border-frost/10'
-            }`}
           >
             {section.label}
           </button>
         ))}
       </div>
 
-      <main className="min-w-0 rounded-3xl border border-frost/10 bg-frost/[0.025] p-4 shadow-2xl shadow-ink-950/20 sm:p-6">
+      <main className="min-w-0">
         {active.content}
       </main>
     </div>

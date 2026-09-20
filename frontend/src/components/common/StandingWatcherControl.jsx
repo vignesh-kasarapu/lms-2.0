@@ -22,32 +22,34 @@ function WatcherPicker({ candidates, value, onChange }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="glass-input !py-1.5 !text-xs w-full flex items-center justify-between text-left"
+        className="input !text-xs w-full flex items-center justify-between text-left"
+        style={{ minHeight: 36 }}
       >
-        <span className={selected ? 'text-ink-100' : 'text-ink-500'}>
+        <span className={selected ? '' : 'muted'}>
           {selected ? selected.full_name : 'Watcher…'}
         </span>
-        <ChevronDown className={`w-3.5 h-3.5 text-ink-400 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3.5 h-3.5 muted transition-transform shrink-0 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-1 w-56 max-h-64 overflow-y-auto rounded-xl border border-frost/10 bg-ink-950/95 backdrop-blur-xl shadow-2xl py-1">
+        <div className="absolute z-20 mt-1 w-56 max-h-64 overflow-y-auto py-1" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', boxShadow: 'var(--shadow-popover)' }}>
           {candidates.map((c) => (
             <button
               key={c.employee_id}
               type="button"
               onClick={() => { onChange(c.employee_id); setOpen(false); }}
-              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-frost/[0.06] transition-colors"
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left"
+              style={{ background: 'transparent' }}
             >
               <div className="min-w-0">
-                <p className="text-xs font-bold text-ink-100 truncate">{c.full_name}</p>
-                <p className="text-[10px] text-ink-500 truncate">
+                <p className="text-xs font-medium truncate">{c.full_name}</p>
+                <p className="muted truncate" style={{ fontSize: '10px' }}>
                   {[c.Department?.department_name, c.designation].filter(Boolean).join(' · ') || 'No department on record'}
                 </p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[9px] font-mono text-ink-600">#{c.employee_id}</span>
-                {String(value) === String(c.employee_id) && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                <span className="muted" style={{ fontSize: '9px', fontFamily: 'monospace' }}>#{c.employee_id}</span>
+                {String(value) === String(c.employee_id) && <Check className="w-3.5 h-3.5" style={{ color: 'var(--color-success)' }} />}
               </div>
             </button>
           ))}
@@ -113,10 +115,10 @@ export default function StandingWatcherControl({ employeeId, employeeName }) {
   }
 
   return (
-    <div className="w-full p-3 bg-frost/[0.03] rounded-xl space-y-2 text-xs">
-      <p className="text-ink-400">Standing watchers on {employeeName}</p>
+    <div className="w-full p-3 rounded-md space-y-2 small" style={{ background: 'var(--color-tint-2)' }}>
+      <p className="muted">Standing watchers on {employeeName}</p>
       {current.map((s) => (
-        <div key={s.standing_watcher_id} className="text-ink-300 bg-frost/[0.04] rounded-lg px-2.5 py-1.5">
+        <div key={s.standing_watcher_id} className="rounded-sm px-2.5 py-1.5" style={{ background: 'var(--color-surface)' }}>
           {s.watcherEmployee?.full_name} · {s.from_date} → {s.to_date}
         </div>
       ))}
@@ -128,15 +130,15 @@ export default function StandingWatcherControl({ employeeId, employeeName }) {
             onChange={(id) => setForm((f) => ({ ...f, watcherEmployeeId: id }))}
           />
         </div>
-        <input type="date" className="glass-input !py-1.5 !text-xs w-32" value={form.fromDate}
+        <input type="date" className="input !text-xs w-32" style={{ minHeight: 36 }} value={form.fromDate}
           onChange={(e) => setForm((f) => ({ ...f, fromDate: e.target.value }))} required />
-        <input type="date" className="glass-input !py-1.5 !text-xs w-32" value={form.toDate}
+        <input type="date" className="input !text-xs w-32" style={{ minHeight: 36 }} value={form.toDate}
           onChange={(e) => setForm((f) => ({ ...f, toDate: e.target.value }))} required />
-        <PrimaryButton type="submit" disabled={saving} className="!px-2.5 !py-1.5">
+        <PrimaryButton type="submit" disabled={saving} className="btn--sm !px-2.5">
           <Plus className="w-3.5 h-3.5" />
         </PrimaryButton>
       </form>
-      {error && <p className="text-status-rejected">{error}</p>}
+      {error && <p className="error-msg">{error}</p>}
     </div>
   );
 }

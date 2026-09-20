@@ -37,11 +37,7 @@ export default function Login() {
 
           {/* Mobile-only compact brand header, shown when the hero column is hidden */}
           <div className="lg:hidden flex items-center justify-center gap-3">
-            <div
-              className="w-10 h-10 rounded-xl shrink-0"
-              style={{ background: 'linear-gradient(135deg, #7C3AED, #6366F1, #22D3EE)' }}
-            />
-            <p className="text-base font-display font-bold text-premium-text">LMS 2.0</p>
+            <img src="/brand/tektalis.png" alt="Tektalis" style={{ height: 26 }} />
           </div>
 
           <motion.div

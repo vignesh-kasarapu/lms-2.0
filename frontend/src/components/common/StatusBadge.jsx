@@ -1,21 +1,17 @@
 const STATE_META = {
-  DRAFT: { label: 'Draft', color: 'bg-ink-500/20 text-ink-300 border-ink-500/30' },
-  PENDING_MANAGER: { label: 'Pending manager', color: 'bg-status-pending/15 text-status-pending border-status-pending/30' },
-  PENDING_HR: { label: 'Pending HR', color: 'bg-status-pending/15 text-status-pending border-status-pending/30' },
-  APPROVED: { label: 'Approved', color: 'bg-status-approved/15 text-status-approved border-status-approved/30' },
-  REJECTED: { label: 'Rejected', color: 'bg-status-rejected/15 text-status-rejected border-status-rejected/30' },
-  REJECTED_PENDING_WITHDRAWAL: { label: 'Rejected — withdrawal window', color: 'bg-status-advance/15 text-status-advance border-status-advance/30' },
-  WITHDRAWN: { label: 'Withdrawn', color: 'bg-ink-500/20 text-ink-300 border-ink-500/30' },
-  LOP_APPLIED: { label: 'Loss of pay', color: 'bg-status-advance/15 text-status-advance border-status-advance/30' },
-  CANCELLATION_REQUESTED: { label: 'Cancellation requested', color: 'bg-status-info/15 text-status-info border-status-info/30' },
-  CANCELLED: { label: 'Cancelled', color: 'bg-ink-500/20 text-ink-300 border-ink-500/30' },
+  DRAFT: { label: 'Draft', pill: 'pill--muted' },
+  PENDING_MANAGER: { label: 'Pending manager', pill: 'pill--accent' },
+  PENDING_HR: { label: 'Pending HR', pill: 'pill--accent' },
+  APPROVED: { label: 'Approved', pill: 'pill--success' },
+  REJECTED: { label: 'Rejected', pill: 'pill--danger' },
+  REJECTED_PENDING_WITHDRAWAL: { label: 'Rejected — withdrawal window', pill: 'pill--warning' },
+  WITHDRAWN: { label: 'Withdrawn', pill: 'pill--muted' },
+  LOP_APPLIED: { label: 'Loss of pay', pill: 'pill--warning' },
+  CANCELLATION_REQUESTED: { label: 'Cancellation requested', pill: 'pill--accent' },
+  CANCELLED: { label: 'Cancelled', pill: 'pill--muted' },
 };
 
 export default function StatusBadge({ state }) {
-  const meta = STATE_META[state] || { label: state, color: 'bg-ink-500/20 text-ink-300 border-ink-500/30' };
-  return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${meta.color}`}>
-      {meta.label}
-    </span>
-  );
+  const meta = STATE_META[state] || { label: state, pill: 'pill--muted' };
+  return <span className={`pill ${meta.pill}`}>{meta.label}</span>;
 }

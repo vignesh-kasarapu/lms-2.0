@@ -5,9 +5,12 @@ const { requireAuth, requireRole } = require('../middleware/auth.middleware');
 const router = express.Router();
 
 router.get('/me', requireAuth, employeeController.me);
+router.patch('/me', requireAuth, employeeController.updateMyProfile);
+router.post('/me/avatar', requireAuth, employeeController.avatarUpload.single('avatar'), employeeController.uploadMyAvatar);
 router.get('/dashboard', requireAuth, employeeController.dashboard);
 router.get('/', requireAuth, requireRole('HR_ADMIN'), employeeController.list);
 router.post('/', requireAuth, requireRole('HR_ADMIN'), employeeController.createEmployee);
+router.get('/:employeeId/avatar', requireAuth, employeeController.getAvatar);
 router.patch('/:employeeId/manager', requireAuth, requireRole('HR_ADMIN'), employeeController.updateManager);
 router.patch('/:employeeId', requireAuth, requireRole('HR_ADMIN'), employeeController.updateDetails);
 router.get('/my-team', requireAuth, requireRole('MANAGER', 'HR_ADMIN'), employeeController.myTeam);

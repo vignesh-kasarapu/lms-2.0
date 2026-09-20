@@ -60,43 +60,47 @@ export default function BalanceExtrasAdmin({ leaveYearId: leaveYearIdProp } = {}
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <GlassCard>
-        <h3 className="font-display font-bold text-ink-100 mb-1 flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-status-approved" /> Leave encashment
+        <h3 className="h3 mb-1 flex items-center gap-2">
+          <DollarSign className="w-4 h-4 text-accent-text" /> Leave encashment
         </h3>
-        <p className="text-xs text-ink-500 mb-4">Converts balance to a payable record for payroll — no salary calculation performed here.</p>
+        <p className="small muted mb-4">Converts balance to a payable record for payroll — no salary calculation performed here.</p>
         <form onSubmit={submitEncash} className="space-y-3">
-          <select className="glass-input" value={encashForm.employeeId} onChange={(e) => setEncashForm((f) => ({ ...f, employeeId: e.target.value }))} required>
+          <select className="input" value={encashForm.employeeId} onChange={(e) => setEncashForm((f) => ({ ...f, employeeId: e.target.value }))} required>
             <option value="">Employee…</option>
             {employees.map((e) => <option key={e.employee_id} value={e.employee_id}>{e.full_name}</option>)}
           </select>
-          <select className="glass-input" value={encashForm.leaveTypeId} onChange={(e) => setEncashForm((f) => ({ ...f, leaveTypeId: e.target.value }))} required>
+          <select className="input" value={encashForm.leaveTypeId} onChange={(e) => setEncashForm((f) => ({ ...f, leaveTypeId: e.target.value }))} required>
             <option value="">Leave type…</option>
             {leaveTypes.map((t) => <option key={t.leave_type_id} value={t.leave_type_id}>{t.type_name}</option>)}
           </select>
-          <input type="number" min="0" step="0.5" className="glass-input" placeholder="Days to encash" value={encashForm.daysEncashed}
+          <input type="number" min="0" step="0.5" className="input" placeholder="Days to encash" value={encashForm.daysEncashed}
             onChange={(e) => setEncashForm((f) => ({ ...f, daysEncashed: e.target.value }))} required />
-          <input className="glass-input" placeholder="Notes" value={encashForm.notes} onChange={(e) => setEncashForm((f) => ({ ...f, notes: e.target.value }))} />
-          {encashResult && <p className={`text-xs ${encashResult.ok ? 'text-status-approved' : 'text-status-rejected'}`}>{encashResult.message}</p>}
+          <input className="input" placeholder="Notes" value={encashForm.notes} onChange={(e) => setEncashForm((f) => ({ ...f, notes: e.target.value }))} />
+          {encashResult && (
+            <p className="small" style={{ color: encashResult.ok ? 'var(--color-success)' : 'var(--color-danger-text)' }}>{encashResult.message}</p>
+          )}
           <PrimaryButton type="submit" disabled={savingEncash} className="w-full">{savingEncash ? 'Posting…' : 'Post encashment'}</PrimaryButton>
         </form>
       </GlassCard>
 
       <GlassCard>
-        <h3 className="font-display font-bold text-ink-100 mb-1 flex items-center gap-2">
-          <Clock3 className="w-4 h-4 text-aurora-cyan" /> Compensatory off
+        <h3 className="h3 mb-1 flex items-center gap-2">
+          <Clock3 className="w-4 h-4 text-accent-text" /> Compensatory off
         </h3>
-        <p className="text-xs text-ink-500 mb-4">Credit earned time off against approved out-of-hours work.</p>
+        <p className="small muted mb-4">Credit earned time off against approved out-of-hours work.</p>
         <form onSubmit={submitCompOff} className="space-y-3">
-          <select className="glass-input" value={compOffForm.employeeId} onChange={(e) => setCompOffForm((f) => ({ ...f, employeeId: e.target.value }))} required>
+          <select className="input" value={compOffForm.employeeId} onChange={(e) => setCompOffForm((f) => ({ ...f, employeeId: e.target.value }))} required>
             <option value="">Employee…</option>
             {employees.map((e) => <option key={e.employee_id} value={e.employee_id}>{e.full_name}</option>)}
           </select>
-          <input type="date" className="glass-input" value={compOffForm.workDate} onChange={(e) => setCompOffForm((f) => ({ ...f, workDate: e.target.value }))} required />
-          <input type="number" min="0" step="0.5" className="glass-input" placeholder="Days credited" value={compOffForm.hoursOrDays}
+          <input type="date" className="input" value={compOffForm.workDate} onChange={(e) => setCompOffForm((f) => ({ ...f, workDate: e.target.value }))} required />
+          <input type="number" min="0" step="0.5" className="input" placeholder="Days credited" value={compOffForm.hoursOrDays}
             onChange={(e) => setCompOffForm((f) => ({ ...f, hoursOrDays: e.target.value }))} required />
-          <input className="glass-input" placeholder="Notes (e.g. what work this compensates)" value={compOffForm.notes}
+          <input className="input" placeholder="Notes (e.g. what work this compensates)" value={compOffForm.notes}
             onChange={(e) => setCompOffForm((f) => ({ ...f, notes: e.target.value }))} />
-          {compOffResult && <p className={`text-xs ${compOffResult.ok ? 'text-status-approved' : 'text-status-rejected'}`}>{compOffResult.message}</p>}
+          {compOffResult && (
+            <p className="small" style={{ color: compOffResult.ok ? 'var(--color-success)' : 'var(--color-danger-text)' }}>{compOffResult.message}</p>
+          )}
           <PrimaryButton type="submit" disabled={savingCompOff} className="w-full">{savingCompOff ? 'Crediting…' : 'Credit comp-off'}</PrimaryButton>
         </form>
       </GlassCard>

@@ -33,6 +33,15 @@ const Employee = sequelize.define('Employee', {
   marital_status: { type: DataTypes.STRING(20), allowNull: true }, // optional, free-text (e.g. Single/Married)
   designation: { type: DataTypes.STRING(100), allowNull: true, defaultValue: 'Employee' },
   reporting_manager_id: { type: DataTypes.BIGINT, allowNull: true, field: 'manager_id' },
+  // Self-service "personal details" — the only fields an employee may edit on their own
+  // record (see employeeService.updateOwnProfile); everything else on this model is
+  // org-controlled and only reachable through HR/Admin-gated routes.
+  phone: { type: DataTypes.STRING(30), allowNull: true },
+  personal_email: { type: DataTypes.STRING(255), allowNull: true, validate: { isEmail: true } },
+  date_of_birth: { type: DataTypes.DATEONLY, allowNull: true },
+  emergency_contact_name: { type: DataTypes.STRING(150), allowNull: true },
+  emergency_contact_phone: { type: DataTypes.STRING(30), allowNull: true },
+  avatar_path: { type: DataTypes.STRING(500), allowNull: true }, // absolute disk path; served only via GET /employees/:id/avatar
   status: {
     type: DataTypes.VIRTUAL,
     get() {

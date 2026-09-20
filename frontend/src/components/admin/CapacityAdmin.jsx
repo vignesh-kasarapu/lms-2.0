@@ -7,7 +7,7 @@ import {
 import { listEmployees } from '../../api/employees';
 import GlassCard from '../common/GlassCard';
 import Modal from '../common/Modal';
-import { PrimaryButton } from '../common/GlassButton';
+import { PrimaryButton, GhostButton, DangerButton } from '../common/GlassButton';
 
 // Shared across both forms/modals in this file — end date may never be before start date,
 // otherwise a blackout period becomes a dead range that assertNoBlackoutConflict can never
@@ -64,38 +64,36 @@ export default function CapacityAdmin() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <GlassCard>
-        <h3 className="font-display font-bold text-ink-100 mb-1 flex items-center gap-2">
-          <Ban className="w-4 h-4 text-status-rejected" /> Blackout periods
+        <h3 className="h3 mb-1 flex items-center gap-2">
+          <Ban className="w-4 h-4 text-accent-text" /> Blackout periods
         </h3>
-        <p className="text-xs text-ink-500 mb-4">Leave cannot be applied for during these windows — this blocks submission, not just a warning.</p>
-        <form onSubmit={submitPeriod} className="space-y-3 pb-4 mb-4 border-b border-frost/5">
-          <input className="glass-input" placeholder="Name (e.g. Year-end freeze)" value={periodForm.name}
+        <p className="small muted mb-4">Leave cannot be applied for during these windows — this blocks submission, not just a warning.</p>
+        <form onSubmit={submitPeriod} className="space-y-3 pb-4 mb-4 border-b border-border">
+          <input className="input" placeholder="Name (e.g. Year-end freeze)" value={periodForm.name}
             onChange={(e) => setPeriodForm((f) => ({ ...f, name: e.target.value }))} required />
-          <div className="grid grid-cols-2 gap-2">
-            <input type="date" className="glass-input" value={periodForm.startDate} onChange={(e) => setPeriodForm((f) => ({ ...f, startDate: e.target.value }))} required />
-            <input type="date" className="glass-input" value={periodForm.endDate} onChange={(e) => setPeriodForm((f) => ({ ...f, endDate: e.target.value }))} required />
+          <div className="grid2">
+            <input type="date" className="input" value={periodForm.startDate} onChange={(e) => setPeriodForm((f) => ({ ...f, startDate: e.target.value }))} required />
+            <input type="date" className="input" value={periodForm.endDate} onChange={(e) => setPeriodForm((f) => ({ ...f, endDate: e.target.value }))} required />
           </div>
-          {periodDateError && <p className="text-xs font-semibold text-status-rejected">{periodDateError}</p>}
+          {periodDateError && <p className="error-msg">{periodDateError}</p>}
           <PrimaryButton type="submit" disabled={savingPeriod || !!periodDateError} className="w-full">{savingPeriod ? 'Saving…' : 'Create blackout period'}</PrimaryButton>
         </form>
-        <div className="space-y-2">
+        <div className="space-y-1">
           {!periods.length ? (
-            <p className="text-xs text-ink-500 text-center py-4">No blackout periods configured yet.</p>
+            <p className="small muted text-center py-4">No blackout periods configured yet.</p>
           ) : periods.map((p) => (
             <button
               type="button"
               key={p.blackout_id}
               onClick={() => setEditingPeriod(p)}
-              className="w-full flex items-center justify-between text-sm bg-frost/[0.03] hover:bg-frost/[0.06] transition-colors rounded-lg px-3 py-2 text-left"
+              className="w-full flex items-center justify-between small rounded-md px-3 py-2 text-left hover:bg-tint-2 transition-colors"
             >
               <div>
-                <p className="text-ink-100 flex items-center gap-2">
+                <p className="flex items-center gap-2">
                   {p.name}
-                  {!p.is_active && (
-                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-status-rejected/10 text-status-rejected border border-status-rejected/30">Disabled</span>
-                  )}
+                  {!p.is_active && <span className="pill pill--muted">Disabled</span>}
                 </p>
-                <p className="text-xs text-ink-500">{p.start_date} → {p.end_date}</p>
+                <p className="muted small">{p.start_date} → {p.end_date}</p>
               </div>
             </button>
           ))}
@@ -103,23 +101,23 @@ export default function CapacityAdmin() {
       </GlassCard>
 
       <GlassCard>
-        <h3 className="font-display font-bold text-ink-100 mb-1 flex items-center gap-2">
-          <Users2 className="w-4 h-4 text-aurora-violet" /> Team capacity limits
+        <h3 className="h3 mb-1 flex items-center gap-2">
+          <Users2 className="w-4 h-4 text-accent-text" /> Team capacity limits
         </h3>
-        <p className="text-xs text-ink-500 mb-4">Cap how many of a manager's direct reports may be on leave at once.</p>
-        <form onSubmit={submitCapacity} className="space-y-3 pb-4 mb-4 border-b border-frost/5">
-          <select className="glass-input" value={capacityForm.managerEmployeeId} onChange={(e) => setCapacityForm((f) => ({ ...f, managerEmployeeId: e.target.value }))} required>
+        <p className="small muted mb-4">Cap how many of a manager's direct reports may be on leave at once.</p>
+        <form onSubmit={submitCapacity} className="space-y-3 pb-4 mb-4 border-b border-border">
+          <select className="input" value={capacityForm.managerEmployeeId} onChange={(e) => setCapacityForm((f) => ({ ...f, managerEmployeeId: e.target.value }))} required>
             <option value="">Manager…</option>
             {managers.map((m) => <option key={m.employee_id} value={m.employee_id}>{m.full_name}</option>)}
           </select>
-          <input type="number" min="1" className="glass-input" placeholder="Max concurrent on leave" value={capacityForm.maxConcurrentOnLeave}
+          <input type="number" min="1" className="input" placeholder="Max concurrent on leave" value={capacityForm.maxConcurrentOnLeave}
             onChange={(e) => setCapacityForm((f) => ({ ...f, maxConcurrentOnLeave: e.target.value }))} required />
-          <input type="date" className="glass-input" value={capacityForm.effectiveFrom} onChange={(e) => setCapacityForm((f) => ({ ...f, effectiveFrom: e.target.value }))} required />
+          <input type="date" className="input" value={capacityForm.effectiveFrom} onChange={(e) => setCapacityForm((f) => ({ ...f, effectiveFrom: e.target.value }))} required />
           <PrimaryButton type="submit" disabled={savingCapacity} className="w-full">{savingCapacity ? 'Saving…' : 'Set limit'}</PrimaryButton>
         </form>
-        <div className="space-y-2">
+        <div className="space-y-1">
           {!limits.length ? (
-            <p className="text-xs text-ink-500 text-center py-4">No team capacity limits configured yet.</p>
+            <p className="small muted text-center py-4">No team capacity limits configured yet.</p>
           ) : limits.map((l) => {
             const disabled = l.effective_to && l.effective_to <= new Date().toISOString().slice(0, 10);
             return (
@@ -127,16 +125,14 @@ export default function CapacityAdmin() {
                 type="button"
                 key={l.capacity_limit_id}
                 onClick={() => setEditingLimit(l)}
-                className="w-full flex items-center justify-between text-sm bg-frost/[0.03] hover:bg-frost/[0.06] transition-colors rounded-lg px-3 py-2 text-left"
+                className="w-full flex items-center justify-between small rounded-md px-3 py-2 text-left hover:bg-tint-2 transition-colors"
               >
                 <div>
-                  <p className="text-ink-100 flex items-center gap-2">
+                  <p className="flex items-center gap-2">
                     {l.managerEmployee?.full_name || `Manager #${l.manager_employee_id}`}
-                    {disabled && (
-                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-status-rejected/10 text-status-rejected border border-status-rejected/30">Disabled</span>
-                    )}
+                    {disabled && <span className="pill pill--muted">Disabled</span>}
                   </p>
-                  <p className="text-xs text-ink-500">
+                  <p className="muted small">
                     Max {l.max_concurrent_on_leave} concurrent · from {l.effective_from}{l.effective_to ? ` to ${l.effective_to}` : ''}
                   </p>
                 </div>
@@ -194,42 +190,40 @@ function BlackoutEditModal({ period, onClose, onSaved }) {
   return (
     <Modal open onClose={onClose} title="Edit blackout period" maxWidth="max-w-md">
       <div className="space-y-4">
-        <div>
-          <label className="text-[11px] font-bold uppercase text-ink-400 mb-1 block">Name</label>
-          <input className="glass-input" value={values.name} onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))} />
+        <div className="field">
+          <label>Name</label>
+          <input className="input" value={values.name} onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))} />
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="text-[11px] font-bold uppercase text-ink-400 mb-1 block">Start date</label>
-            <input type="date" className="glass-input" value={values.startDate} onChange={(e) => setValues((v) => ({ ...v, startDate: e.target.value }))} />
+        <div className="grid2">
+          <div className="field">
+            <label>Start date</label>
+            <input type="date" className="input" value={values.startDate} onChange={(e) => setValues((v) => ({ ...v, startDate: e.target.value }))} />
           </div>
-          <div>
-            <label className="text-[11px] font-bold uppercase text-ink-400 mb-1 block">End date</label>
-            <input type="date" className="glass-input" value={values.endDate} onChange={(e) => setValues((v) => ({ ...v, endDate: e.target.value }))} />
+          <div className="field">
+            <label>End date</label>
+            <input type="date" className="input" value={values.endDate} onChange={(e) => setValues((v) => ({ ...v, endDate: e.target.value }))} />
           </div>
         </div>
-        {dateError && <p className="text-xs font-semibold text-status-rejected">{dateError}</p>}
+        {dateError && <p className="error-msg">{dateError}</p>}
 
-        <div className="flex items-center justify-between gap-3 pt-3 border-t border-frost/10">
-          <p className="text-sm font-bold text-ink-100">{period.is_active ? 'Active' : 'Disabled'}</p>
-          <ToggleSwitch checked={period.is_active} onChange={toggleActive} />
+        <div className="flex items-center justify-between gap-3 pt-3 border-t border-border">
+          <p className="small font-medium">{period.is_active ? 'Active' : 'Disabled'}</p>
+          <button type="button" role="switch" aria-checked={period.is_active} aria-label="Active" onClick={toggleActive} className="switch" />
         </div>
 
         {!confirmingDelete ? (
           <div className="flex items-center gap-2">
             <PrimaryButton onClick={save} disabled={saving || !!dateError} className="flex-1">{saving ? 'Saving…' : 'Save changes'}</PrimaryButton>
-            <button type="button" onClick={() => setConfirmingDelete(true)} className="ghost-btn !px-3 !py-2.5 text-xs hover:border-status-rejected/40 hover:text-status-rejected">
+            <GhostButton type="button" onClick={() => setConfirmingDelete(true)}>
               <Trash2 className="w-3.5 h-3.5" /> Delete
-            </button>
+            </GhostButton>
           </div>
         ) : (
-          <div className="flex items-center justify-between gap-2 bg-status-rejected/10 border border-status-rejected/30 rounded-xl px-3 py-2.5">
-            <p className="text-xs font-semibold text-status-rejected">Delete this blackout period?</p>
-            <div className="flex items-center gap-2 shrink-0">
-              <button type="button" onClick={() => setConfirmingDelete(false)} className="ghost-btn !py-1.5 !px-3 text-xs">Cancel</button>
-              <button type="button" onClick={remove} className="bg-status-rejected hover:bg-rose-600 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition-all">
-                Confirm
-              </button>
+          <div className="alert alert--danger">
+            <p className="small">Delete this blackout period?</p>
+            <div className="actions">
+              <GhostButton type="button" onClick={() => setConfirmingDelete(false)}>Cancel</GhostButton>
+              <DangerButton type="button" onClick={remove}>Confirm</DangerButton>
             </div>
           </div>
         )}
@@ -267,53 +261,39 @@ function CapacityEditModal({ limit, onClose, onSaved }) {
   return (
     <Modal open onClose={onClose} title={limit.managerEmployee?.full_name || 'Edit team capacity limit'} maxWidth="max-w-md">
       <div className="space-y-4">
-        <div>
-          <label className="text-[11px] font-bold uppercase text-ink-400 mb-1 block">Max concurrent on leave</label>
-          <input type="number" min="1" className="glass-input" value={values.maxConcurrentOnLeave}
+        <div className="field">
+          <label>Max concurrent on leave</label>
+          <input type="number" min="1" className="input" value={values.maxConcurrentOnLeave}
             onChange={(e) => setValues((v) => ({ ...v, maxConcurrentOnLeave: e.target.value }))} />
         </div>
-        <div>
-          <label className="text-[11px] font-bold uppercase text-ink-400 mb-1 block">Effective from</label>
-          <input type="date" className="glass-input" value={values.effectiveFrom}
+        <div className="field">
+          <label>Effective from</label>
+          <input type="date" className="input" value={values.effectiveFrom}
             onChange={(e) => setValues((v) => ({ ...v, effectiveFrom: e.target.value }))} />
         </div>
 
-        <div className="flex items-center justify-between gap-3 pt-3 border-t border-frost/10">
-          <p className="text-sm font-bold text-ink-100">{isActive ? 'Active' : 'Disabled'}</p>
-          <ToggleSwitch checked={isActive} onChange={toggleActive} />
+        <div className="flex items-center justify-between gap-3 pt-3 border-t border-border">
+          <p className="small font-medium">{isActive ? 'Active' : 'Disabled'}</p>
+          <button type="button" role="switch" aria-checked={isActive} aria-label="Active" onClick={toggleActive} className="switch" />
         </div>
 
         {!confirmingDelete ? (
           <div className="flex items-center gap-2">
             <PrimaryButton onClick={save} disabled={saving} className="flex-1">{saving ? 'Saving…' : 'Save changes'}</PrimaryButton>
-            <button type="button" onClick={() => setConfirmingDelete(true)} className="ghost-btn !px-3 !py-2.5 text-xs hover:border-status-rejected/40 hover:text-status-rejected">
+            <GhostButton type="button" onClick={() => setConfirmingDelete(true)}>
               <Trash2 className="w-3.5 h-3.5" /> Delete
-            </button>
+            </GhostButton>
           </div>
         ) : (
-          <div className="flex items-center justify-between gap-2 bg-status-rejected/10 border border-status-rejected/30 rounded-xl px-3 py-2.5">
-            <p className="text-xs font-semibold text-status-rejected">Delete this capacity limit?</p>
-            <div className="flex items-center gap-2 shrink-0">
-              <button type="button" onClick={() => setConfirmingDelete(false)} className="ghost-btn !py-1.5 !px-3 text-xs">Cancel</button>
-              <button type="button" onClick={remove} className="bg-status-rejected hover:bg-rose-600 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition-all">
-                Confirm
-              </button>
+          <div className="alert alert--danger">
+            <p className="small">Delete this capacity limit?</p>
+            <div className="actions">
+              <GhostButton type="button" onClick={() => setConfirmingDelete(false)}>Cancel</GhostButton>
+              <DangerButton type="button" onClick={remove}>Confirm</DangerButton>
             </div>
           </div>
         )}
       </div>
     </Modal>
-  );
-}
-
-function ToggleSwitch({ checked, onChange }) {
-  return (
-    <button
-      type="button"
-      onClick={onChange}
-      className={`relative w-12 h-6 rounded-full transition-all shrink-0 border-2 ${checked ? 'bg-emerald-500 border-emerald-400' : 'bg-ink-800 border-ink-600'}`}
-    >
-      <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${checked ? 'translate-x-6' : 'translate-x-0'}`} />
-    </button>
   );
 }

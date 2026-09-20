@@ -27,3 +27,10 @@ export const getEmployeeRoles = (employeeId) => client.get(`/employees/${employe
 export const assignEmployeeRole = (employeeId, roleCode) => client.post(`/employees/${employeeId}/roles`, { roleCode });
 export const revokeEmployeeRole = (employeeId, roleCode) => client.delete(`/employees/${employeeId}/roles`, { data: { roleCode } });
 export const getTeamCalendar = (params) => client.get('/employees/team-calendar', { params });
+export const updateMyProfile = (payload) => client.patch('/employees/me', payload);
+export const uploadMyAvatar = (file) => {
+  const form = new FormData();
+  form.append('avatar', file);
+  return client.post('/employees/me/avatar', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+};
+export const avatarUrl = (employeeId) => (employeeId ? `/api/employees/${employeeId}/avatar` : null);

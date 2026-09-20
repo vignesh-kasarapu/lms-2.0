@@ -3,6 +3,9 @@ import { UserPlus, Upload, Search, Users, CheckCircle2, AlertCircle, Plus, Penci
 import { listEmployees, createEmployee, bulkImportEmployees } from '../../api/employees';
 import { listManagementLevels, listRegions, createRegion } from '../../api/admin';
 import GlassCard from '../common/GlassCard';
+import ResponsiveList from '../common/ResponsiveList';
+import EmptyState from '../common/EmptyState';
+import { PrimaryButton, GhostButton } from '../common/GlassButton';
 import StandingWatcherControl from '../common/StandingWatcherControl';
 import EmployeeLifecycleActions from './EmployeeLifecycleActions';
 import RoleAssignment from './RoleAssignment';
@@ -98,61 +101,94 @@ export default function EmployeeAdmin() {
     emp.work_email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const employeeSummary = (emp) => (
+    <button
+      type="button"
+      onClick={() => setEditingEmployee(emp)}
+      className="w-full flex items-center gap-3 group text-left"
+      title="Click to edit employee details"
+    >
+      <div className="avatar shrink-0">{emp.full_name?.slice(0, 2).toUpperCase()}</div>
+      <div className="min-w-0">
+        <p className="text-sm font-medium flex items-center gap-1.5 truncate">
+          {emp.full_name}
+          <Pencil className="w-3 h-3 muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+        </p>
+        <p className="small muted truncate">{emp.designation} · <span className="num">{emp.employee_code}</span></p>
+        {emp.Department?.department_name && <p className="small muted truncate">{emp.Department.department_name}</p>}
+        <span className={`pill mt-1 ${emp.status === 'ACTIVE' ? 'pill--success' : 'pill--muted'}`}>{emp.status}</span>
+      </div>
+    </button>
+  );
+
+  const columns = [
+    { key: 'employee', label: 'Employee', render: employeeSummary },
+    { key: 'roles', label: 'Roles', render: (emp) => <RoleAssignment employeeId={emp.employee_id} /> },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (emp) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <StandingWatcherControl employeeId={emp.employee_id} employeeName={emp.full_name} />
+          <EmployeeLifecycleActions employee={emp} allEmployees={employees} onChange={load} />
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-      <GlassCard className="lg:col-span-2 !p-5 border-indigo-500/20">
-        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-frost/10">
-          <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-            <UserPlus className="w-4 h-4" />
-          </div>
-          <h3 className="font-display font-bold text-ink-100 text-base">Onboard Employee</h3>
+      <GlassCard className="lg:col-span-2">
+        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
+          <UserPlus className="w-4 h-4 text-accent-text" />
+          <h3 className="h3">Onboard employee</h3>
         </div>
 
         <form onSubmit={submit} className="space-y-3">
-          <div>
-            <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Full Name</label>
-            <input className="glass-input" placeholder="e.g. Jane Doe" value={form.fullName}
+          <div className="field">
+            <label>Full name</label>
+            <input className="input" placeholder="e.g. Jane Doe" value={form.fullName}
               onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))} required />
           </div>
-          <div>
-            <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Work Email</label>
-            <input type="email" className="glass-input" placeholder="jane@company.com" value={form.workEmail}
+          <div className="field">
+            <label>Work email</label>
+            <input type="email" className="input" placeholder="jane@company.com" value={form.workEmail}
               onChange={(e) => setForm((f) => ({ ...f, workEmail: e.target.value }))} required />
           </div>
-          <div>
-            <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Emp Code</label>
-            <input className="glass-input" placeholder="EMP-101" value={form.employeeCode}
+          <div className="field">
+            <label>Emp code</label>
+            <input className="input" placeholder="EMP-101" value={form.employeeCode}
               onChange={(e) => setForm((f) => ({ ...f, employeeCode: e.target.value }))} required />
           </div>
-          <div>
-            <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Designation</label>
-            <input className="glass-input" placeholder="Senior Engineer" value={form.designation}
+          <div className="field">
+            <label>Designation</label>
+            <input className="input" placeholder="Senior Engineer" value={form.designation}
               onChange={(e) => setForm((f) => ({ ...f, designation: e.target.value }))} required />
           </div>
-          <div>
-            <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Date of Joining</label>
-            <input type="date" className="glass-input" value={form.dateOfJoining}
+          <div className="field">
+            <label>Date of joining</label>
+            <input type="date" className="input" value={form.dateOfJoining}
               onChange={(e) => setForm((f) => ({ ...f, dateOfJoining: e.target.value }))} required />
           </div>
-          <div>
-            <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Department</label>
-            <input className="glass-input" placeholder="e.g. Engineering" value={form.departmentName}
+          <div className="field">
+            <label>Department</label>
+            <input className="input" placeholder="e.g. Engineering" value={form.departmentName}
               onChange={(e) => setForm((f) => ({ ...f, departmentName: e.target.value }))} required />
           </div>
-          <div>
-            <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Assigned Role</label>
-            <select className="glass-input text-ink-200 bg-void-900" value={form.roleCode}
+          <div className="field">
+            <label>Assigned role</label>
+            <select className="input" value={form.roleCode}
               onChange={(e) => setForm((f) => ({ ...f, roleCode: e.target.value, managementLevelId: e.target.value === 'EMPLOYEE' ? '' : f.managementLevelId }))} required>
               <option value="EMPLOYEE">Employee</option>
               <option value="MANAGER">Manager</option>
-              <option value="HR_ADMIN">HR Admin</option>
+              <option value="HR_ADMIN">HR admin</option>
             </select>
-            <p className="text-[10px] text-ink-500 mt-1">Roles can also be granted or revoked later from the directory below.</p>
+            <p className="hint">Roles can also be granted or revoked later from the directory below.</p>
           </div>
           {form.roleCode !== 'EMPLOYEE' && (
-            <div>
-              <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Management Level (optional)</label>
-              <select className="glass-input text-ink-200 bg-void-900" value={form.managementLevelId}
+            <div className="field">
+              <label>Management level (optional)</label>
+              <select className="input" value={form.managementLevelId}
                 onChange={(e) => setForm((f) => ({ ...f, managementLevelId: e.target.value }))}>
                 <option value="">No management level</option>
                 {managementLevels.map((level) => (
@@ -163,165 +199,137 @@ export default function EmployeeAdmin() {
               </select>
             </div>
           )}
-          <div>
-            <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Reporting Manager</label>
-            <select className="glass-input text-ink-200 bg-void-900" value={form.reportingManagerId}
+          <div className="field">
+            <label>Reporting manager</label>
+            <select className="input" value={form.reportingManagerId}
               onChange={(e) => setForm((f) => ({ ...f, reportingManagerId: e.target.value }))}>
-              <option value="">No reporting manager (Top Level)</option>
+              <option value="">No reporting manager (top level)</option>
               {employees.map((emp) => <option key={emp.employee_id} value={emp.employee_id}>{emp.full_name} ({emp.designation})</option>)}
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Gender (optional)</label>
-              <select className="glass-input text-ink-200 bg-void-900" value={form.gender}
+          <div className="grid2">
+            <div className="field">
+              <label>Gender (optional)</label>
+              <select className="input" value={form.gender}
                 onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value }))}>
                 <option value="">Prefer not to say</option>
                 <option value="MALE">Male</option>
                 <option value="FEMALE">Female</option>
               </select>
             </div>
-            <div>
-              <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Marital Status (optional)</label>
-              <input className="glass-input" placeholder="e.g. Single, Married" value={form.maritalStatus}
+            <div className="field">
+              <label>Marital status (optional)</label>
+              <input className="input" placeholder="e.g. Single, Married" value={form.maritalStatus}
                 onChange={(e) => setForm((f) => ({ ...f, maritalStatus: e.target.value }))} />
             </div>
           </div>
 
-          <div>
-            <label className="text-[11px] font-semibold uppercase text-ink-400 mb-1 block">Region of Working</label>
+          <div className="field">
+            <label>Region of working</label>
             <div className="flex gap-1.5">
-              <select className="glass-input text-ink-200 bg-void-900 flex-1" value={form.regionId}
+              <select className="input flex-1" value={form.regionId}
                 onChange={(e) => setForm((f) => ({ ...f, regionId: e.target.value }))}>
                 <option value="">No region</option>
                 {regions.map((r) => <option key={r.region_id} value={r.region_id}>{r.region_name}</option>)}
               </select>
-              <button type="button" onClick={() => setAddingRegion((v) => !v)}
-                className="ghost-btn !px-3 shrink-0" title="Add a new region">
+              <GhostButton type="button" onClick={() => setAddingRegion((v) => !v)} className="!px-3 shrink-0" title="Add a new region">
                 <Plus className="w-4 h-4" />
-              </button>
+              </GhostButton>
             </div>
-            <p className="text-[10px] text-ink-500 mt-1">Determines which holidays this employee sees and has deducted.</p>
+            <p className="hint">Determines which holidays this employee sees and has deducted.</p>
             {addingRegion && (
               <div className="mt-1.5">
                 <div className="flex gap-1.5">
-                  <input className="glass-input !py-1.5 text-xs w-20" placeholder="Code" value={newRegion.code}
+                  <input className="input text-xs w-20" style={{ minHeight: 36 }} placeholder="Code" value={newRegion.code}
                     onChange={(e) => setNewRegion((r) => ({ ...r, code: e.target.value.toUpperCase() }))} />
-                  <input className="glass-input !py-1.5 text-xs flex-1" placeholder="Region name" value={newRegion.name}
+                  <input className="input text-xs flex-1" style={{ minHeight: 36 }} placeholder="Region name" value={newRegion.name}
                     onChange={(e) => setNewRegion((r) => ({ ...r, name: e.target.value }))} />
-                  <button type="button" onClick={submitNewRegion} disabled={savingRegion} className="admin-btn !px-3 !py-1.5 text-xs shrink-0">
+                  <button type="button" onClick={submitNewRegion} disabled={savingRegion} className="btn btn--secondary btn--sm shrink-0">
                     {savingRegion ? 'Adding…' : 'Add'}
                   </button>
                 </div>
-                {regionError && <p className="text-[11px] font-semibold text-status-rejected mt-1">{regionError}</p>}
+                {regionError && <p className="error-msg mt-1">{regionError}</p>}
               </div>
             )}
           </div>
 
-          {error && <p className="text-xs font-semibold text-status-rejected bg-status-rejected/10 p-2 rounded-lg">{error}</p>}
-          <button type="submit" disabled={saving} className="admin-btn w-full mt-2">
-            {saving ? 'Creating Record…' : 'Create Employee Profile'}
-          </button>
+          {error && <p className="error-msg">{error}</p>}
+          <PrimaryButton type="submit" disabled={saving} className="w-full mt-2">
+            {saving ? 'Creating record…' : 'Create employee profile'}
+          </PrimaryButton>
         </form>
 
-        <div className="mt-5 pt-4 border-t border-frost/10">
-          <label className="ghost-btn w-full justify-center text-indigo-300 hover:border-indigo-500/40 cursor-pointer text-xs font-semibold py-2.5">
+        <div className="mt-5 pt-4 border-t border-border">
+          <label className="btn btn--ghost w-full justify-center cursor-pointer">
             <Upload className="w-4 h-4" />
-            {importing ? 'Processing CSV…' : 'Bulk Import Employees (CSV)'}
+            {importing ? 'Processing CSV…' : 'Bulk import employees (CSV)'}
             <input type="file" accept=".csv" className="hidden" onChange={handleImport} disabled={importing} />
           </label>
-          <p className="text-[11px] text-ink-400 mt-2">
+          <p className="hint mt-2">
             Requires columns: fullName, workEmail, employeeCode, dateOfJoining, designation.
           </p>
 
           {importResult && (
             importResult.committed ? (
-              <p className="text-xs font-semibold text-status-approved mt-2 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Imported {importResult.importedCount} employee(s) successfully.
-              </p>
+              <div className="alert alert--success mt-2" role="status">
+                <CheckCircle2 />
+                <p>Imported {importResult.importedCount} employee(s) successfully.</p>
+              </div>
             ) : (
-              <div className="text-xs text-status-rejected mt-2 p-2 rounded-lg bg-status-rejected/10 space-y-1">
-                <p className="font-bold flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Import rejected:</p>
-                {importResult.errors.map((e, i) => (
-                  <p key={i}>Row {e.row} ({e.employeeCode}): {e.errors.join('; ')}</p>
-                ))}
+              <div className="alert alert--danger mt-2" role="alert">
+                <AlertCircle />
+                <div className="space-y-1">
+                  <p><b>Import rejected:</b></p>
+                  {importResult.errors.map((e, i) => (
+                    <p key={i} className="small">Row {e.row} ({e.employeeCode}): {e.errors.join('; ')}</p>
+                  ))}
+                </div>
               </div>
             )
           )}
         </div>
       </GlassCard>
 
-      <GlassCard className="lg:col-span-3 !p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-frost/10">
+      <GlassCard className="lg:col-span-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-border">
           <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-indigo-400" />
-            <h3 className="font-display font-bold text-ink-100 text-base">Employee Directory</h3>
-            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-              {filtered.length} total
-            </span>
+            <Users className="w-4 h-4 text-accent-text" />
+            <h3 className="h3">Employee directory</h3>
+            <span className="pill pill--accent">{filtered.length} total</span>
           </div>
 
           <div className="relative w-full sm:w-60">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 muted" />
             <input
               type="text"
               placeholder="Search by name, code, role..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="glass-input !py-1.5 !pl-9 text-xs"
+              className="input text-xs"
+              style={{ minHeight: 36, paddingLeft: '2.25rem' }}
             />
           </div>
         </div>
 
-        <div className="divide-y divide-frost/5 pr-1 max-h-[75vh] overflow-y-auto">
-          {!filtered.length ? (
-            <p className="text-xs text-ink-500 py-8 text-center">No employees matching search criteria.</p>
-          ) : (
-            filtered.map((emp) => (
-              <div key={emp.employee_id} className="py-3.5 space-y-2.5">
-                <button
-                  type="button"
-                  onClick={() => setEditingEmployee(emp)}
-                  className="w-full flex items-center justify-between gap-3 group text-left rounded-lg -mx-1.5 px-1.5 py-1 hover:bg-frost/[0.03] transition-colors"
-                  title="Click to edit employee details"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-600 to-amber-600 text-white font-bold text-xs flex items-center justify-center shadow-md shrink-0">
-                      {emp.full_name?.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-ink-100 flex items-center gap-1.5 truncate">
-                        {emp.full_name}
-                        <Pencil className="w-3 h-3 text-ink-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                      </p>
-                      <p className="text-xs text-ink-400 truncate">{emp.designation} · <span className="font-mono text-ink-300">{emp.employee_code}</span></p>
-                      {emp.Department?.department_name && (
-                        <p className="text-[11px] text-ink-500 truncate">{emp.Department.department_name}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <span className={`shrink-0 text-[11px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
-                    emp.status === 'ACTIVE'
-                      ? 'text-status-approved border-status-approved/30 bg-status-approved/10'
-                      : 'text-ink-400 border-ink-500/30 bg-ink-500/10'
-                  }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${emp.status === 'ACTIVE' ? 'bg-status-approved' : 'bg-ink-500'}`} />
-                    {emp.status}
-                  </span>
-                </button>
-
-                <div className="bg-frost/[0.02] p-2.5 rounded-xl border border-frost/5 flex flex-wrap items-center gap-x-3 gap-y-2">
-                  <RoleAssignment employeeId={emp.employee_id} />
-                  <div className="hidden sm:block w-px h-4 bg-frost/10" />
-                  <StandingWatcherControl employeeId={emp.employee_id} employeeName={emp.full_name} />
-                  <EmployeeLifecycleActions employee={emp} allEmployees={employees} onChange={load} />
-                </div>
+        <ResponsiveList
+          columns={columns}
+          rows={filtered}
+          rowKey={(emp) => emp.employee_id}
+          empty={<EmptyState icon={Users} title="No employees found" description="No employees match your search criteria." />}
+          renderCard={(emp) => (
+            <>
+              {employeeSummary(emp)}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-2 border-t border-border">
+                <RoleAssignment employeeId={emp.employee_id} />
               </div>
-            ))
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <StandingWatcherControl employeeId={emp.employee_id} employeeName={emp.full_name} />
+                <EmployeeLifecycleActions employee={emp} allEmployees={employees} onChange={load} />
+              </div>
+            </>
           )}
-        </div>
+        />
       </GlassCard>
 
       {editingEmployee && (

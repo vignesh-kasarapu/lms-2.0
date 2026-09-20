@@ -27,19 +27,20 @@ export default function Modal({ open, onClose, title, children, maxWidth = 'max-
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50">
       <div
         ref={cardRef}
-        className={`glass-panel p-6 rounded-3xl w-full ${maxWidth} border border-frost/15 bg-ink-950/95 text-ink-100 shadow-2xl max-h-[85vh] overflow-y-auto`}
+        className={`w-full ${maxWidth} max-h-[85vh] overflow-y-auto p-6`}
+        style={{
+          background: 'var(--color-surface)', color: 'var(--color-text)',
+          borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-popover)',
+          border: '1px solid var(--color-border)',
+        }}
       >
         {title && (
-          <div className="flex items-center justify-between pb-4 mb-4 border-b border-frost/10">
-            <h3 className="font-display font-extrabold text-lg text-ink-50">{title}</h3>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-full text-ink-400 hover:text-ink-50 hover:bg-frost/10 transition-colors"
-              aria-label="Close"
-            >
+          <div className="flex items-center justify-between pb-4 mb-4 border-b border-border">
+            <h3 className="font-display font-medium text-lg">{title}</h3>
+            <button type="button" onClick={onClose} className="btn btn--ghost btn--sm !px-2" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </div>

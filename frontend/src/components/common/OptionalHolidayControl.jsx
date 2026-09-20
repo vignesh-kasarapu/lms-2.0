@@ -44,36 +44,33 @@ export default function OptionalHolidayControl({ employeeId, employeeName }) {
   }
 
   return (
-    <div className="w-full p-3 bg-frost/[0.03] rounded-xl space-y-2 text-xs">
+    <div className="w-full p-3 rounded-md space-y-2 small" style={{ background: 'var(--color-tint-2)' }}>
       <div className="flex items-center justify-between">
-        <p className="text-ink-400">Optional holidays for {employeeName}</p>
-        <button type="button" onClick={() => setOpen(false)} className="text-ink-500 hover:text-ink-200"><X className="w-3.5 h-3.5" /></button>
+        <p className="muted">Optional holidays for {employeeName}</p>
+        <button type="button" onClick={() => setOpen(false)} className="btn btn--ghost btn--sm !min-h-0 !px-1"><X className="w-3.5 h-3.5" /></button>
       </div>
       {!summary ? (
-        <p className="text-ink-500">Loading…</p>
+        <p className="muted">Loading…</p>
       ) : !summary.eligibleHolidays.length ? (
-        <p className="text-ink-500">No optional holidays published for this employee's region this year.</p>
+        <p className="muted">No optional holidays published for this employee's region this year.</p>
       ) : (
         <>
-          <p className="text-ink-400">{summary.taken} of {summary.quota} selected{summary.remaining > 0 ? ` — ${summary.remaining} remaining` : ' — quota reached'}.</p>
+          <p className="muted">{summary.taken} of {summary.quota} selected{summary.remaining > 0 ? ` — ${summary.remaining} remaining` : ' — quota reached'}.</p>
           <div className="space-y-1.5">
             {summary.eligibleHolidays.map((h) => {
               const quotaReached = !h.isSelected && summary.remaining <= 0;
               return (
-                <div key={h.holiday_id} className="flex items-center justify-between gap-2 bg-frost/[0.04] rounded-lg px-2.5 py-1.5">
+                <div key={h.holiday_id} className="flex items-center justify-between gap-2 rounded-sm px-2.5 py-1.5" style={{ background: 'var(--color-surface)' }}>
                   <div className="min-w-0">
-                    <p className="text-ink-200 truncate">{h.holiday_name}</p>
-                    <p className="text-ink-600 text-[10px]">{h.holiday_date}</p>
+                    <p className="truncate">{h.holiday_name}</p>
+                    <p className="muted" style={{ fontSize: '10px' }}>{h.holiday_date}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => toggleSelection(h, h.isSelected)}
                     disabled={busyHolidayId === h.holiday_id || (quotaReached && !h.isSelected)}
-                    className={`shrink-0 flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold border transition-colors disabled:opacity-40 ${
-                      h.isSelected
-                        ? 'text-status-approved border-status-approved/30 bg-status-approved/10 hover:text-status-rejected hover:border-status-rejected/30 hover:bg-status-rejected/10'
-                        : 'text-ink-300 border-frost/15 hover:border-aurora-violet/40 hover:text-aurora-violet'
-                    }`}
+                    className={`pill shrink-0 ${h.isSelected ? 'pill--success' : 'pill--muted'}`}
+                    style={{ cursor: 'pointer', opacity: (busyHolidayId === h.holiday_id || (quotaReached && !h.isSelected)) ? 0.45 : 1 }}
                   >
                     {h.isSelected ? <><Check className="w-3 h-3" /> Selected</> : quotaReached ? 'Quota reached' : 'Assign'}
                   </button>
@@ -83,7 +80,7 @@ export default function OptionalHolidayControl({ employeeId, employeeName }) {
           </div>
         </>
       )}
-      {error && <p className="text-status-rejected">{error}</p>}
+      {error && <p className="error-msg">{error}</p>}
     </div>
   );
 }

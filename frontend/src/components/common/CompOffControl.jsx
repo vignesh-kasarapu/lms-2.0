@@ -36,21 +36,21 @@ export default function CompOffControl({ employeeId, employeeName }) {
   }
 
   return (
-    <div className="w-full p-3 bg-frost/[0.03] rounded-xl space-y-2 text-xs">
-      <p className="text-ink-400">Credit compensatory off for {employeeName}</p>
+    <div className="w-full p-3 rounded-md space-y-2 small" style={{ background: 'var(--color-tint-2)' }}>
+      <p className="muted">Credit compensatory off for {employeeName}</p>
       <form onSubmit={submit} className="flex flex-wrap gap-1.5 items-center pt-1">
-        <input type="date" className="glass-input !py-1.5 !text-xs w-36" value={form.workDate}
+        <input type="date" className="input !text-xs w-36" style={{ minHeight: 36 }} value={form.workDate}
           onChange={(e) => setForm((f) => ({ ...f, workDate: e.target.value }))} required />
-        <input type="number" min="0" step="0.5" className="glass-input !py-1.5 !text-xs w-24" placeholder="Days"
+        <input type="number" min="0" step="0.5" className="input !text-xs w-24" style={{ minHeight: 36 }} placeholder="Days"
           value={form.hoursOrDays} onChange={(e) => setForm((f) => ({ ...f, hoursOrDays: e.target.value }))} required />
-        <input className="glass-input !py-1.5 !text-xs flex-1 min-w-[8rem]" placeholder="Notes (optional)"
+        <input className="input !text-xs flex-1 min-w-[8rem]" style={{ minHeight: 36 }} placeholder="Notes (optional)"
           value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
-        <PrimaryButton type="submit" disabled={saving} className="!px-3 !py-1.5">
+        <PrimaryButton type="submit" disabled={saving} className="btn--sm">
           {saving ? 'Saving…' : 'Credit'}
         </PrimaryButton>
-        <GhostButton type="button" onClick={() => setOpen(false)} className="!px-2.5 !py-1.5">Close</GhostButton>
+        <GhostButton type="button" onClick={() => setOpen(false)} className="btn--sm">Close</GhostButton>
       </form>
-      {result && <p className={result.ok ? 'text-status-approved' : 'text-status-rejected'}>{result.message}</p>}
+      {result && <p className={result.ok ? '' : 'error-msg'} style={result.ok ? { color: 'var(--color-success)' } : undefined}>{result.message}</p>}
     </div>
   );
 }

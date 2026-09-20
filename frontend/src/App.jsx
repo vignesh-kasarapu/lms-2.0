@@ -36,8 +36,8 @@ function Protected({ children, roles }) {
 
 function FullScreenLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="w-10 h-10 rounded-full border-2 border-aurora-violet/30 border-t-aurora-violet animate-spin" />
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-bg)' }}>
+      <div className="w-10 h-10 rounded-full animate-spin" style={{ border: '2px solid var(--color-border)', borderTopColor: 'var(--color-accent)' }} />
     </div>
   );
 }

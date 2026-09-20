@@ -185,6 +185,56 @@ async function updateEmployeeDetails(employeeId, payload, actorId) {
   return employee;
 }
 
+/** Self-service "edit profile": an employee updating their OWN record. Deliberately a
+ * separate, narrower allow-list from updateEmployeeDetails (HR-only) — nothing org-controlled
+ * (name, designation, department, grade, region, management level, work email, employee code,
+ * reporting manager, role) is reachable here, only personal/contact fields. */
+async function updateOwnProfile(employeeId, payload, actorId) {
+  const employee = await Employee.findByPk(employeeId);
+  if (!employee) throw Object.assign(new Error('Employee not found'), { status: 404, code: 'NOT_FOUND' });
+
+  if (payload.personalEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(payload.personalEmail).trim())) {
+    throw Object.assign(new Error('Enter a valid personal email address.'), { status: 400, code: 'VALIDATION_ERROR' });
+  }
+  if (payload.dateOfBirth && Number.isNaN(Date.parse(payload.dateOfBirth))) {
+    throw Object.assign(new Error('Enter a valid date of birth.'), { status: 400, code: 'VALIDATION_ERROR' });
+  }
+
+  const updates = {};
+  if (payload.phone !== undefined) updates.phone = payload.phone?.trim() || null;
+  if (payload.personalEmail !== undefined) updates.personal_email = payload.personalEmail?.trim() || null;
+  if (payload.dateOfBirth !== undefined) updates.date_of_birth = payload.dateOfBirth || null;
+  if (payload.emergencyContactName !== undefined) updates.emergency_contact_name = payload.emergencyContactName?.trim() || null;
+  if (payload.emergencyContactPhone !== undefined) updates.emergency_contact_phone = payload.emergencyContactPhone?.trim() || null;
+  if (payload.gender !== undefined) updates.gender = payload.gender || null;
+  if (payload.maritalStatus !== undefined) updates.marital_status = payload.maritalStatus?.trim() || null;
+
+  await employee.update(updates);
+
+  await auditService.record({
+    actorId, action: 'PROFILE_UPDATED', entityType: 'employees', entityId: employee.employee_id, newValue: updates,
+  });
+
+  return employee;
+}
+
+/** Persists a newly uploaded avatar's disk path on the employee's own record, deleting the
+ * previous file (if any) so uploads don't accumulate orphaned images on disk. */
+async function updateOwnAvatar(employeeId, newAvatarPath) {
+  const employee = await Employee.findByPk(employeeId);
+  if (!employee) throw Object.assign(new Error('Employee not found'), { status: 404, code: 'NOT_FOUND' });
+
+  const previousPath = employee.avatar_path;
+  await employee.update({ avatar_path: newAvatarPath });
+
+  if (previousPath && previousPath !== newAvatarPath) {
+    const fs = require('fs');
+    fs.unlink(previousPath, () => {}); // best-effort cleanup, never block the response on it
+  }
+
+  return employee;
+}
+
 /** LMS-011: refuse circular relationships at entry time (BR-37). */
 async function setReportingManager(employeeId, managerId, actorId) {
   const circular = await approvalRouting.wouldCreateCircularHierarchy(employeeId, managerId);
@@ -314,4 +364,4 @@ async function listWatchableEmployees() {
   return [...seen.values()];
 }
 
-module.exports = { getDashboard, listEmployees, onboardEmployee, updateEmployeeDetails, setReportingManager, getTeamBalances, getTeamCalendar, getPeerCalendar, listWatchableEmployees, isInManagerHierarchy, getAllReportsRecursive };
+module.exports = { getDashboard, listEmployees, onboardEmployee, updateEmployeeDetails, updateOwnProfile, updateOwnAvatar, setReportingManager, getTeamBalances, getTeamCalendar, getPeerCalendar, listWatchableEmployees, isInManagerHierarchy, getAllReportsRecursive };

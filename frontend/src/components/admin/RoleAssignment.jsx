@@ -31,18 +31,14 @@ export default function RoleAssignment({ employeeId }) {
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <ShieldCheck className="w-3.5 h-3.5 text-ink-500 shrink-0" />
+      <ShieldCheck className="w-3.5 h-3.5 muted shrink-0" />
       {ASSIGNABLE_ROLES.map((roleCode) => (
         <button key={roleCode} onClick={() => toggle(roleCode)} disabled={saving}
-          className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
-            roles.includes(roleCode)
-              ? 'bg-aurora-violet/15 border-aurora-violet/50 text-ink-50'
-              : 'bg-frost/[0.03] border-frost/10 text-ink-500 hover:text-ink-300'
-          }`}>
+          className={`pill ${roles.includes(roleCode) ? 'pill--accent' : 'pill--muted'}`}>
           {roleCode === 'HR_ADMIN' ? 'HR/Admin' : 'Manager'}
         </button>
       ))}
-      {error && <p className="w-full text-[11px] text-status-rejected">{error}</p>}
+      {error && <p className="w-full error-msg">{error}</p>}
     </div>
   );
 }

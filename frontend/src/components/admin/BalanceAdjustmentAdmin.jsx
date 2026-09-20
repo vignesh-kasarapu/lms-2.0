@@ -64,49 +64,49 @@ export default function BalanceAdjustmentAdmin() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
       <GlassCard className="lg:col-span-2">
-        <h3 className="font-display font-bold text-ink-100 mb-1 flex items-center gap-2">
-          <Scale className="w-4 h-4 text-aurora-violet" /> Balance adjustment
+        <h3 className="h3 mb-1 flex items-center gap-2">
+          <Scale className="w-4 h-4 text-accent-text" /> Balance adjustment
         </h3>
-        <p className="text-xs text-ink-500 mb-4">Every adjustment requires a reason and is written to the ledger — never silent.</p>
+        <p className="small muted mb-4">Every adjustment requires a reason and is written to the ledger — never silent.</p>
 
         {loadError && (
-          <div className="flex items-start gap-2 text-xs text-status-rejected bg-status-rejected/10 border border-status-rejected/25 rounded-xl px-3 py-2.5 mb-3">
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {loadError}
+          <div className="alert alert--danger mb-3">
+            <AlertTriangle /> <p>{loadError}</p>
           </div>
         )}
 
         <div className="space-y-3">
-          <select className="glass-input" value={employeeId} onChange={(e) => { setEmployeeId(e.target.value); setConfirming(false); }}>
+          <select className="input" value={employeeId} onChange={(e) => { setEmployeeId(e.target.value); setConfirming(false); }}>
             <option value="">Employee…</option>
             {employees.map((e) => <option key={e.employee_id} value={e.employee_id}>{e.full_name}</option>)}
           </select>
-          <select className="glass-input" value={leaveTypeId} onChange={(e) => { setLeaveTypeId(e.target.value); setConfirming(false); }}>
+          <select className="input" value={leaveTypeId} onChange={(e) => { setLeaveTypeId(e.target.value); setConfirming(false); }}>
             <option value="">Leave type…</option>
             {leaveTypes.map((t) => <option key={t.leave_type_id} value={t.leave_type_id}>{t.type_name}</option>)}
           </select>
 
           {employeeId && leaveTypeId && (
             <>
-              <div className="bg-frost/[0.03] rounded-xl px-3 py-2.5 text-sm">
-                <p className="text-ink-500 text-xs">Current balance</p>
-                <p className="text-ink-100 font-semibold text-lg">{currentBalance.toFixed(1)}</p>
+              <div className="calc">
+                <span className="muted small">Current balance</span>
+                <b className="num">{currentBalance.toFixed(1)}</b>
               </div>
 
-              <input type="number" step="0.5" className="glass-input" placeholder="Signed quantity (e.g. -2 or 5)" value={quantity}
+              <input type="number" step="0.5" className="input" placeholder="Signed quantity (e.g. -2 or 5)" value={quantity}
                 onChange={(e) => { setQuantity(e.target.value); setConfirming(false); }} />
-              <textarea className="glass-input min-h-[70px] resize-none" placeholder="Reason (mandatory)" value={reason}
+              <textarea className="input min-h-[70px] resize-none" placeholder="Reason (mandatory)" value={reason}
                 onChange={(e) => { setReason(e.target.value); setConfirming(false); }} />
 
               {quantity && (
-                <div className="bg-frost/[0.03] rounded-xl px-3 py-2.5 text-sm">
-                  <p className="text-ink-500 text-xs">Projected balance after this adjustment</p>
-                  <p className={`font-semibold text-lg ${projectedBalance < 0 ? 'text-status-advance' : 'text-ink-100'}`}>{projectedBalance.toFixed(1)}</p>
+                <div className="calc">
+                  <span className="muted small">Projected balance after this adjustment</span>
+                  <b className={`num ${projectedBalance < 0 ? 'text-warning' : ''}`}>{projectedBalance.toFixed(1)}</b>
                 </div>
               )}
 
               {error && (
-                <div className="flex items-start gap-2 text-xs text-status-rejected bg-status-rejected/10 border border-status-rejected/25 rounded-xl px-3 py-2.5">
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {error}
+                <div className="alert alert--danger">
+                  <AlertTriangle /> <p>{error}</p>
                 </div>
               )}
 
@@ -116,7 +116,7 @@ export default function BalanceAdjustmentAdmin() {
                 </PrimaryButton>
               ) : (
                 <div className="space-y-2">
-                  <p className="text-xs text-status-advance">Confirm: {quantity} day(s), balance will become {projectedBalance.toFixed(1)}.</p>
+                  <p className="small text-warning">Confirm: {quantity} day(s), balance will become {projectedBalance.toFixed(1)}.</p>
                   <PrimaryButton onClick={submit} disabled={saving} className="w-full">{saving ? 'Posting…' : 'Confirm adjustment'}</PrimaryButton>
                 </div>
               )}
@@ -126,24 +126,24 @@ export default function BalanceAdjustmentAdmin() {
       </GlassCard>
 
       <GlassCard className="lg:col-span-3">
-        <h3 className="font-display font-bold text-ink-100 mb-4">Full ledger</h3>
+        <h3 className="h3 mb-4">Full ledger</h3>
         {!employeeId || !leaveTypeId ? (
-          <p className="text-sm text-ink-500">Select an employee and leave type to see their ledger.</p>
+          <p className="small muted">Select an employee and leave type to see their ledger.</p>
         ) : !ledger.length ? (
-          <p className="text-sm text-ink-500">No ledger entries for this employee/type/year.</p>
+          <p className="small muted">No ledger entries for this employee/type/year.</p>
         ) : (
-          <div className="divide-y divide-frost/5 max-h-[480px] overflow-y-auto">
+          <div className="max-h-[480px] overflow-y-auto">
             {ledger.map((entry) => (
-              <div key={entry.entry_id} className="py-2.5 flex items-center justify-between text-sm">
+              <div key={entry.entry_id} className="py-2.5 flex items-center justify-between border-t border-border first:border-t-0">
                 <div>
-                  <p className="text-ink-200">{entry.entry_type.replaceAll('_', ' ').toLowerCase()}</p>
-                  <p className="text-xs text-ink-500">{new Date(entry.created_at).toLocaleDateString()} · {entry.source_reference}</p>
+                  <p className="small">{entry.entry_type.replaceAll('_', ' ').toLowerCase()}</p>
+                  <p className="muted small">{new Date(entry.created_at).toLocaleDateString()} · {entry.source_reference}</p>
                 </div>
                 <div className="text-right">
-                  <p className={parseFloat(entry.quantity) < 0 ? 'text-status-rejected' : 'text-status-approved'}>
+                  <p className={`num ${parseFloat(entry.quantity) < 0 ? 'text-danger-text' : 'text-success'}`}>
                     {parseFloat(entry.quantity) > 0 ? '+' : ''}{entry.quantity}
                   </p>
-                  <p className="text-xs text-ink-500">bal: {entry.running_balance.toFixed(1)}</p>
+                  <p className="muted small">bal: {entry.running_balance.toFixed(1)}</p>
                 </div>
               </div>
             ))}

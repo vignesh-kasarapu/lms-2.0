@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, User, Sparkles, CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, FileText, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { getPeerCalendar, getTeamCalendar } from '../api/employees';
 import { useAuth } from '../context/AuthContext';
 import GlassCard from '../components/common/GlassCard';
+import { GhostButton, SecondaryButton } from '../components/common/GlassButton';
 import StatusBadge from '../components/common/StatusBadge';
 import EmptyState from '../components/common/EmptyState';
 import Topbar from '../components/layout/Topbar';
@@ -74,71 +75,44 @@ export default function TeamCalendar() {
 
   return (
     <>
-      <Topbar title={isManagerView ? 'Team Calendar & Schedule' : 'Peer Leave Calendar'} />
+      <Topbar title={isManagerView ? 'Team Calendar' : 'Peer Leave Calendar'} />
 
-      {/* Calendar Month Header & Controls Bar */}
-      <div className="glass-panel p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-frost/10">
+      <GlassCard className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-aurora-violet/20 text-aurora-violet flex items-center justify-center border border-aurora-violet/40 shadow-lg shadow-aurora-violet/10">
-            <CalendarDays className="w-6 h-6" />
-          </div>
+          <span className="ico" style={{ width: 44, height: 44, borderRadius: 'var(--radius-md)', background: 'var(--color-tint-3)', display: 'grid', placeItems: 'center', color: 'var(--color-accent-text)' }}>
+            <CalendarDays />
+          </span>
           <div>
-            <h2 className="font-display font-extrabold text-lg flex items-center gap-2">
-              <span className="bg-gradient-to-r from-aurora-violet via-indigo-300 to-purple-300 bg-clip-text text-transparent">
-                {MONTH_NAMES[month]} {year}
-              </span>
-            </h2>
-            <p className="text-xs text-ink-300">
-              Click any date on the calendar to view team member leave notes, days taken, and reasons on the right side.
-            </p>
+            <h2 className="h2">{MONTH_NAMES[month]} {year}</h2>
+            <p className="muted small">Click any date to see who is out and why on the right.</p>
           </div>
         </div>
 
-        {/* Month Navigation Controls */}
         <div className="flex items-center gap-2 self-end sm:self-center">
-          <button
-            onClick={prevMonth}
-            className="p-2 rounded-xl bg-frost/5 hover:bg-frost/10 text-ink-200 border border-frost/10 transition-colors"
-            title="Previous Month"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            onClick={goToToday}
-            className="px-3.5 py-1.5 rounded-xl bg-aurora-violet/20 text-aurora-violet hover:bg-aurora-violet/30 font-bold text-xs border border-aurora-violet/40 transition-all shadow-sm"
-          >
-            Today
-          </button>
-          <button
-            onClick={nextMonth}
-            className="p-2 rounded-xl bg-frost/5 hover:bg-frost/10 text-ink-200 border border-frost/10 transition-colors"
-            title="Next Month"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
+          <GhostButton className="btn--sm !px-2" onClick={prevMonth} title="Previous month" aria-label="Previous month">
+            <ChevronLeft />
+          </GhostButton>
+          <SecondaryButton className="btn--sm" onClick={goToToday}>Today</SecondaryButton>
+          <GhostButton className="btn--sm !px-2" onClick={nextMonth} title="Next month" aria-label="Next month">
+            <ChevronRight />
+          </GhostButton>
         </div>
-      </div>
+      </GlassCard>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Left Side (3 cols): Interactive Monthly Grid Calendar */}
-        <div className="lg:col-span-3 glass-panel p-5 rounded-2xl border border-frost/10">
-          {/* Weekday Headers */}
+      <div className="row2 mt-4">
+        {/* Monthly grid */}
+        <GlassCard>
           <div className="grid grid-cols-7 gap-1 mb-2 text-center">
             {WEEKDAYS.map((wd) => (
-              <div key={wd} className="text-[11px] font-extrabold uppercase tracking-wider text-aurora-violet py-1">
-                {wd}
-              </div>
+              <div key={wd} className="muted small">{wd}</div>
             ))}
           </div>
 
-          {/* Days Grid */}
           <div className="grid grid-cols-7 gap-1.5">
-            {/* Blank cells before month starts */}
             {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-              <div key={`blank-${i}`} className="h-20 sm:h-24 rounded-xl bg-frost/[0.01] border border-transparent" />
+              <div key={`blank-${i}`} className="h-20 sm:h-24" />
             ))}
 
-            {/* Month Day Cells */}
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const dayNum = i + 1;
               const dateStr = formatYMD(year, month, dayNum);
@@ -152,138 +126,107 @@ export default function TeamCalendar() {
                   type="button"
                   key={dateStr}
                   onClick={() => setSelectedDateStr(dateStr)}
-                  className={`h-20 sm:h-24 rounded-xl p-1.5 text-left border flex flex-col justify-between transition-all duration-150 relative group cursor-pointer ${
-                    isSelected
-                      ? 'bg-gradient-to-br from-aurora-violet/30 to-indigo-500/20 border-aurora-violet ring-2 ring-aurora-violet shadow-lg shadow-aurora-violet/20'
+                  className="h-20 sm:h-24 p-1.5 text-left flex flex-col justify-between cursor-pointer"
+                  style={{
+                    borderRadius: 'var(--radius-md)',
+                    border: `1px solid ${isSelected ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                    background: isSelected
+                      ? 'color-mix(in srgb, var(--color-accent) 14%, var(--color-surface))'
                       : isToday
-                      ? 'bg-aurora-violet/10 border-aurora-violet/40 text-ink-50'
-                      : dayLeaves.length > 0
-                      ? 'bg-indigo-950/20 border-indigo-500/30 hover:border-aurora-violet/60'
-                      : 'bg-frost/[0.02] border-frost/5 hover:bg-frost/[0.06] hover:border-frost/15'
-                  }`}
+                        ? 'var(--color-tint-2)'
+                        : dayLeaves.length > 0
+                          ? 'var(--color-tint-3)'
+                          : 'var(--color-surface)',
+                  }}
                 >
-                  {/* Day Number Header */}
                   <div className="flex items-center justify-between">
-                    <span
-                      className={`text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center ${
-                        isToday
-                          ? 'bg-aurora-violet text-white font-black'
-                          : isSelected
-                          ? 'text-aurora-violet font-extrabold'
-                          : 'text-ink-200'
-                      }`}
-                    >
+                    <span className={isSelected || isToday ? 'num' : 'num muted'} style={{ fontWeight: isToday || isSelected ? 'var(--font-weight-medium)' : undefined }}>
                       {dayNum}
                     </span>
                     {dayLeaves.length > 0 && (
-                      <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-aurora-violet/20 text-aurora-violet border border-aurora-violet/40">
-                        {dayLeaves.length}
-                      </span>
+                      <span className="pill pill--accent" style={{ padding: '0 6px' }}>{dayLeaves.length}</span>
                     )}
                   </div>
-
                 </button>
               );
             })}
           </div>
-        </div>
+        </GlassCard>
 
-        {/* Right Side (2 cols): Team Notes & Leave Inspector Panel */}
-        <div className="lg:col-span-2 glass-panel p-5 rounded-2xl border border-aurora-violet/30 bg-gradient-to-b from-aurora-violet/10 via-transparent to-indigo-500/5 transition-all flex flex-col justify-between">
-          <div>
-            {/* Inspector Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-frost/10 mb-4">
-              <div>
-                <h3 className="font-display font-extrabold text-base bg-gradient-to-r from-aurora-violet via-indigo-300 to-purple-300 bg-clip-text text-transparent flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-aurora-violet" />
-                  Team Notes & Details
-                </h3>
-                <p className="text-xs text-aurora-violet font-semibold mt-0.5">
-                  {formatNiceDate(selectedDateStr)}
-                </p>
-              </div>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-aurora-violet/15 text-aurora-violet border border-aurora-violet/30">
-                {selectedLeaves.length} Leave(s)
-              </span>
+        {/* Selected day inspector */}
+        <GlassCard strong className="flex flex-col">
+          <div className="panel-head">
+            <div>
+              <h3 className="h3 flex items-center gap-2"><FileText className="w-4 h-4" /> Team notes</h3>
+              <p className="muted small">{formatNiceDate(selectedDateStr)}</p>
             </div>
+            <span className="pill pill--accent">{selectedLeaves.length} leave{selectedLeaves.length === 1 ? '' : 's'}</span>
+          </div>
 
-            {/* Leave Details List for Selected Day */}
-            {loading ? (
-              <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-32 rounded-xl bg-frost/[0.03] animate-pulse" />)}</div>
-            ) : error ? (
-              <EmptyState icon={AlertTriangle} title="Couldn't load the calendar" description={error} />
-            ) : !selectedLeaves.length ? (
-              <EmptyState
-                icon={CalendarDays}
-                title="No leaves on this date"
-                description="Select a day on the calendar grid to inspect leave days taken, reasons, and team notes."
-              />
-            ) : (
-              <div className="space-y-4 max-h-[520px] overflow-y-auto pr-1">
-                {selectedLeaves.map((l) => {
-                  const emp = l.employee || {};
-                  const initials = emp.full_name?.slice(0, 2).toUpperCase() || 'EMP';
-                  const leaveTypeName = isManagerView
-                    ? l.LeaveType?.type_name || 'Scheduled Leave'
-                    : 'Scheduled Time Off';
+          {loading ? (
+            <div className="flex flex-col gap-3">
+              {[1, 2].map((i) => <div key={i} className="skel" style={{ height: 96, borderRadius: 'var(--radius-md)' }} />)}
+            </div>
+          ) : error ? (
+            <EmptyState icon={AlertTriangle} title="Couldn't load the calendar" description={error} />
+          ) : !selectedLeaves.length ? (
+            <EmptyState
+              icon={CalendarDays}
+              title="No leaves on this date"
+              description="Select a day on the calendar grid to inspect leave days taken, reasons, and team notes."
+            />
+          ) : (
+            <div className="flex flex-col gap-3" style={{ maxHeight: 520, overflowY: 'auto' }}>
+              {selectedLeaves.map((l) => {
+                const emp = l.employee || {};
+                const initials = emp.full_name?.slice(0, 2).toUpperCase() || 'EMP';
+                const leaveTypeName = isManagerView
+                  ? l.LeaveType?.type_name || 'Scheduled leave'
+                  : 'Scheduled time off';
 
-                  return (
-                    <div
-                      key={l.request_id}
-                      className="bg-aurora-violet/[0.06] p-4 rounded-2xl border border-aurora-violet/20 space-y-3 hover:border-aurora-violet/40 transition-all"
-                    >
-                      {/* Member Info Header */}
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-aurora-violet to-indigo-700 text-white font-black text-xs flex items-center justify-center shadow-md border border-aurora-violet/30 shrink-0">
-                            {initials}
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-ink-100 text-sm leading-snug flex items-center gap-1.5">
-                              {emp.full_name}
-                              <CheckCircle2 className="w-3.5 h-3.5 text-aurora-violet shrink-0" />
-                            </h4>
-                            <p className="text-xs text-aurora-violet font-medium">
-                              {emp.designation || 'Team Member'}
-                            </p>
-                          </div>
-                        </div>
-                        <StatusBadge state={l.state} />
-                      </div>
-
-                      {/* Leave Metadata Row */}
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="bg-aurora-violet/[0.06] p-2.5 rounded-xl border border-aurora-violet/15">
-                          <span className="text-[10px] uppercase font-bold text-ink-400 block">Leave Category</span>
-                          <span className="text-aurora-violet font-extrabold text-xs">{leaveTypeName}</span>
-                        </div>
-                        <div className="bg-aurora-violet/[0.06] p-2.5 rounded-xl border border-aurora-violet/15">
-                          <span className="text-[10px] uppercase font-bold text-ink-400 block">Days Taken</span>
-                          <span className="text-ink-100 font-extrabold text-xs">
-                            {l.deducted_days ? `${l.deducted_days} day(s)` : `${l.start_date} → ${l.end_date}`}
-                            {l.is_half_day && ` (${l.half_day_portion === 'FIRST' ? '1st Half AM' : '2nd Half PM'})`}
-                          </span>
+                return (
+                  <div key={l.request_id} className="flex flex-col gap-3 p-3" style={{ background: 'var(--color-tint-2)', borderRadius: 'var(--radius-md)' }}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="avatar" style={{ width: 36, height: 36, fontSize: 12 }}>{initials}</span>
+                        <div>
+                          <p className="name flex items-center gap-1.5">
+                            {emp.full_name}
+                            <CheckCircle2 className="w-3.5 h-3.5" style={{ color: 'var(--color-success)' }} />
+                          </p>
+                          <p className="muted small">{emp.designation || 'Team member'}</p>
                         </div>
                       </div>
+                      <StatusBadge state={l.state} />
+                    </div>
 
-                      {/* Employee Reason / Notes Box */}
-                      <div>
-                        <p className="text-[10px] uppercase font-bold text-ink-400 mb-1 flex items-center gap-1">
-                          <FileText className="w-3 h-3 text-aurora-violet" /> Reason & Notes:
+                    <div className="grid grid-cols-2 gap-2 small">
+                      <div className="p-2" style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-sm)' }}>
+                        <span className="muted small">Leave category</span>
+                        <p className="num" style={{ fontWeight: 'var(--font-weight-medium)' }}>{leaveTypeName}</p>
+                      </div>
+                      <div className="p-2" style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-sm)' }}>
+                        <span className="muted small">Days taken</span>
+                        <p className="num" style={{ fontWeight: 'var(--font-weight-medium)' }}>
+                          {l.deducted_days ? `${l.deducted_days} day(s)` : `${l.start_date} → ${l.end_date}`}
+                          {l.is_half_day && ` (${l.half_day_portion === 'FIRST' ? '1st half AM' : '2nd half PM'})`}
                         </p>
-                        <div className="bg-aurora-violet/[0.05] p-3 rounded-xl border border-aurora-violet/20 text-xs text-ink-200 italic leading-relaxed">
-                          "{l.reason || 'No detailed notes provided for this leave application.'}"
-                        </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+
+                    <div>
+                      <p className="muted small mb-1 flex items-center gap-1"><FileText className="w-3 h-3" /> Reason &amp; notes</p>
+                      <div className="p-2 small" style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-sm)' }}>
+                        "{l.reason || 'No detailed notes provided for this leave application.'}"
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </GlassCard>
       </div>
     </>
   );
 }
-

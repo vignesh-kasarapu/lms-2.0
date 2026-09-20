@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, CalendarDays, Paperclip, Sparkles, CheckCircle2, FileText, ArrowRight, PartyPopper, ListChecks } from 'lucide-react';
+import { AlertTriangle, CalendarDays, Paperclip, FileText, PartyPopper, ListChecks } from 'lucide-react';
 import { previewApplication, submitRequest, saveDraft, getMyRequests } from '../api/leaveRequests';
 import { getDashboard } from '../api/employees';
 import { listHolidays, getOptionalHolidaySummary } from '../api/holidays';
@@ -136,19 +136,18 @@ export default function ApplyLeave() {
       <Topbar title="Apply for Leave" />
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Main Application Form */}
-        <GlassCard className="lg:col-span-3 !p-6">
+        <GlassCard className="lg:col-span-3">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Step 1: Select Leave Type */}
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-aurora-cyan mb-2.5 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" /> 1. Select Leave Category
-              </label>
+            {/* Leave type */}
+            <div className="field">
+              <label>Leave type</label>
               {typesError && (
-                <div className="flex items-center gap-2 text-xs font-semibold text-status-rejected bg-status-rejected/10 border border-status-rejected/30 rounded-xl p-3 mb-2.5">
-                  <AlertTriangle className="w-4 h-4 shrink-0" /> {typesError}
+                <div className="alert alert--danger" role="alert">
+                  <AlertTriangle />
+                  <p>{typesError}</p>
                 </div>
               )}
-              <div className="grid grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
                 {leaveTypes.map((t) => {
                   const isSelected = String(form.leaveTypeId) === String(t.id);
                   return (
@@ -156,16 +155,16 @@ export default function ApplyLeave() {
                       type="button"
                       key={t.id}
                       onClick={() => setForm((f) => ({ ...f, leaveTypeId: t.id }))}
-                      className={`p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-left border transition-all flex items-center gap-2 sm:flex-col sm:items-start sm:gap-0 sm:justify-between ${
-                        isSelected
-                          ? 'bg-gradient-to-br from-aurora-violet/20 to-aurora-cyan/10 border-aurora-violet/60 shadow-[0_0_20px_rgba(139,109,255,0.25)] text-ink-50 sm:scale-[1.02]'
-                          : 'bg-frost/[0.03] border-frost/10 text-ink-400 hover:text-ink-200 hover:bg-frost/[0.06]'
-                      }`}
+                      className="p-space-3 rounded-md text-left border flex items-start gap-2"
+                      style={{
+                        borderColor: isSelected ? 'var(--color-accent)' : 'var(--color-border)',
+                        background: isSelected ? 'var(--color-tint-2)' : 'var(--color-surface)',
+                      }}
                     >
-                      <span className="text-lg sm:text-xl sm:mb-1 shrink-0">{t.icon}</span>
+                      <span className="text-lg shrink-0">{t.icon}</span>
                       <div className="min-w-0">
-                        <p className="font-bold text-xs sm:text-sm text-ink-100 truncate">{t.name}</p>
-                        <p className="hidden sm:block text-[11px] text-ink-400 mt-0.5">{t.desc}</p>
+                        <p className="font-medium small truncate">{t.name}</p>
+                        <p className="small muted mt-0.5 truncate">{t.desc}</p>
                       </div>
                     </button>
                   );
@@ -173,51 +172,47 @@ export default function ApplyLeave() {
               </div>
             </div>
 
-            {/* Step 2: Date Selection */}
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-aurora-cyan mb-2.5 flex items-center gap-1.5">
-                <CalendarDays className="w-3.5 h-3.5" /> 2. Schedule Dates
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-ink-400 mb-1 block">Start Date</label>
-                  <input type="date" className="glass-input" value={form.startDate}
-                    onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))} required />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-ink-400 mb-1 block">End Date</label>
-                  <input type="date" className="glass-input" value={form.endDate}
-                    onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))} required />
-                </div>
+            {/* Dates */}
+            <div className="grid2">
+              <div className="field">
+                <label>Start date</label>
+                <input type="date" className="input" value={form.startDate}
+                  onChange={(e) => setForm((f) => (
+                    f.isHalfDay ? { ...f, startDate: e.target.value, endDate: e.target.value } : { ...f, startDate: e.target.value }
+                  ))} required />
+              </div>
+              <div className="field">
+                <label>End date</label>
+                <input type="date" className="input disabled:opacity-60" value={form.endDate}
+                  onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))} disabled={form.isHalfDay} required />
               </div>
             </div>
 
             {/* Half Day Option */}
             {selectedType?.halfDay && (
-              <div className="p-3 rounded-xl bg-frost/[0.02] border border-frost/5 flex items-center justify-between">
-                <label className="flex items-center gap-2.5 text-sm font-semibold text-ink-200 cursor-pointer">
+              <div className="flex items-center justify-between gap-3 p-space-3 rounded-md bg-tint-2">
+                <label className="chk">
                   <input type="checkbox" checked={form.isHalfDay}
-                    onChange={(e) => setForm((f) => ({ ...f, isHalfDay: e.target.checked }))}
-                    className="w-4 h-4 rounded border-frost/20 bg-frost/5 text-aurora-violet focus:ring-aurora-violet" />
+                    onChange={(e) => setForm((f) => (
+                      e.target.checked ? { ...f, isHalfDay: true, endDate: f.startDate } : { ...f, isHalfDay: false }
+                    ))} />
                   Half-day leave duration
                 </label>
                 {form.isHalfDay && (
-                  <select className="glass-input !py-1 text-xs w-36" value={form.halfDayPortion}
+                  <select className="input" style={{ width: '9rem' }} value={form.halfDayPortion}
                     onChange={(e) => setForm((f) => ({ ...f, halfDayPortion: e.target.value }))}>
-                    <option value="FIRST" className="bg-void-900 text-ink-200">First Half (AM)</option>
-                    <option value="SECOND" className="bg-void-900 text-ink-200">Second Half (PM)</option>
+                    <option value="FIRST">First half (AM)</option>
+                    <option value="SECOND">Second half (PM)</option>
                   </select>
                 )}
               </div>
             )}
 
             {/* Reason */}
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-aurora-cyan mb-1.5 block">
-                3. Reason for Leave
-              </label>
+            <div className="field">
+              <label>Reason for leave</label>
               <textarea
-                className="glass-input min-h-[95px] resize-none text-sm"
+                className="input"
                 placeholder="Provide details for your manager to review..."
                 value={form.reason}
                 onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
@@ -227,13 +222,13 @@ export default function ApplyLeave() {
 
             {/* Optional Attachment Dropzone */}
             {selectedType?.attachments && (
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-ink-400 mb-1.5 block flex items-center gap-1.5">
-                  <Paperclip className="w-3.5 h-3.5" /> Supporting Document (Medical / Official)
+              <div className="field">
+                <label className="flex items-center gap-1.5">
+                  <Paperclip className="w-3.5 h-3.5" /> Supporting document (medical / official)
                 </label>
-                <label className="ghost-btn w-full justify-center text-ink-300 border-dashed border-frost/20 hover:border-aurora-violet/50 cursor-pointer py-4">
-                  <FileText className="w-4 h-4 text-aurora-violet" />
-                  <span className="text-xs font-semibold">{file ? file.name : 'Click to select PDF, PNG or JPEG (Max 10MB)'}</span>
+                <label className="btn btn--secondary w-full justify-center cursor-pointer" style={{ borderStyle: 'dashed' }}>
+                  <FileText className="w-4 h-4" />
+                  <span className="small">{file ? file.name : 'Click to select PDF, PNG or JPEG (max 10MB)'}</span>
                   <input
                     type="file"
                     accept=".pdf,.png,.jpg,.jpeg"
@@ -245,64 +240,73 @@ export default function ApplyLeave() {
             )}
 
             {error && (
-              <div className="flex items-start gap-2.5 text-xs font-semibold text-status-rejected bg-status-rejected/10 border border-status-rejected/30 rounded-xl p-3">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {error}
+              <div className="alert alert--danger" role="alert">
+                <AlertTriangle />
+                <p>{error}</p>
               </div>
             )}
 
             {/* Submission CTAs */}
-            <div className="flex items-center gap-3 pt-2">
-              <PrimaryButton type="submit" disabled={submitting || !preview} className="!py-3 !px-6 text-sm font-bold shadow-glow">
-                {submitting ? 'Submitting Application…' : 'Submit Leave Application'}
+            <div className="actions pt-2">
+              <PrimaryButton type="submit" disabled={submitting || !preview || preview.deductedWorkingDays <= 0}>
+                {submitting ? 'Submitting application…' : 'Submit leave application'}
               </PrimaryButton>
-              <GhostButton type="button" onClick={handleSaveDraft} disabled={submitting || !form.leaveTypeId || !form.startDate} className="!py-3 text-xs">
-                Save Draft
+              <GhostButton type="button" onClick={handleSaveDraft} disabled={submitting || !form.leaveTypeId || !form.startDate}>
+                Save draft
               </GhostButton>
             </div>
           </form>
         </GlassCard>
 
         {/* Realtime Cost Breakdown Sidebar */}
-        <div className="lg:col-span-2">
-          <GlassCard strong className="sticky top-6 !p-6 border-aurora-cyan/20">
-            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-frost/10">
-              <div className="w-8 h-8 rounded-lg bg-aurora-cyan/10 text-aurora-cyan flex items-center justify-center">
-                <CalendarDays className="w-4 h-4" />
-              </div>
-              <h3 className="font-display font-bold text-ink-100 text-base">Leave Impact Breakdown</h3>
+        <div className="lg:col-span-2 space-y-4">
+          <GlassCard strong className="sticky top-6">
+            <div className="panel-head">
+              <h3 className="h3 flex items-center gap-2">
+                <CalendarDays className="w-4 h-4 text-accent-text" /> Leave impact breakdown
+              </h3>
             </div>
 
             <AnimatePresence mode="wait">
               {!preview ? (
-                <div className="text-center py-8">
-                  <p className="text-xs text-ink-400">Select a leave category and valid start/end dates to calculate deducted working days.</p>
-                </div>
+                <p className="small muted">
+                  {previewLoading ? 'Calculating…' : 'Select a leave category and valid start/end dates to calculate deducted working days.'}
+                </p>
               ) : (
                 <motion.div key="preview" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                  <div className="bg-frost/[0.03] p-4 rounded-xl border border-frost/10 text-center">
-                    <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider">Deducted Working Days</p>
-                    <p className="text-4xl font-display font-extrabold text-aurora-cyan mt-1">
+                  <div className="calc">
+                    <span className="small muted">Deducted working days</span>
+                    <b className="num">
                       {preview.deductedWorkingDays}
-                      <span className="text-xs font-medium text-ink-400 ml-1">day(s)</span>
-                    </p>
+                      <span className="small font-medium muted"> day(s)</span>
+                    </b>
                   </div>
 
-                  <div className="bg-frost/[0.03] rounded-xl px-4 py-3 border border-frost/5 flex items-center justify-between">
+                  <div className="flex items-center justify-between bg-tint-2 rounded-md px-space-4 py-space-3">
                     <div>
-                      <p className="text-[10px] uppercase font-bold text-ink-400">Balance After This Leave</p>
-                      <p className="text-[11px] text-ink-500 mt-0.5">{preview.effectiveBalance} day(s) available now</p>
+                      <span className="small muted block">Balance after this leave</span>
+                      <span className="small muted">{preview.effectiveBalance} day(s) available now</span>
                     </div>
-                    <p className={`text-xl font-extrabold ${preview.projectedBalance < 0 ? 'text-status-advance' : 'text-ink-100'}`}>
+                    <span className={`num font-bold ${preview.projectedBalance < 0 ? 'text-warning' : ''}`} style={{ fontSize: 'var(--font-size-4)' }}>
                       {preview.projectedBalance}
-                    </p>
+                    </span>
                   </div>
+
+                  {preview.deductedWorkingDays <= 0 && (
+                    <div className="alert alert--danger" role="alert">
+                      <AlertTriangle />
+                      <p>
+                        <b>No working days in range:</b> the selected date(s) fall on a weekend or holiday that isn&apos;t deductible. Pick a different date.
+                      </p>
+                    </div>
+                  )}
 
                   {preview.isAdvanceLeave && (
-                    <div className="flex items-start gap-2 text-xs text-status-advance bg-status-advance/10 border border-status-advance/30 rounded-xl p-3">
-                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                      <span>
-                        <strong>Advance Leave Flagged:</strong> Exceeds current available balance by {preview.shortfall} day(s). Requires managerial approval.
-                      </span>
+                    <div className="alert alert--warning" role="status">
+                      <AlertTriangle />
+                      <p>
+                        <b>Advance leave flagged:</b> exceeds current available balance by {preview.shortfall} day(s). Requires managerial approval.
+                      </p>
                     </div>
                   )}
                 </motion.div>
@@ -311,36 +315,31 @@ export default function ApplyLeave() {
           </GlassCard>
 
           {upcoming.length > 0 && (
-            <GlassCard className="mt-4 !p-6">
-              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-frost/10">
-                <div className="w-8 h-8 rounded-lg bg-aurora-violet/10 text-aurora-violet flex items-center justify-center">
-                  <ListChecks className="w-4 h-4" />
-                </div>
-                <h3 className="font-display font-bold text-ink-100 text-base">Upcoming</h3>
+            <GlassCard>
+              <div className="panel-head">
+                <h3 className="h3 flex items-center gap-2">
+                  <ListChecks className="w-4 h-4 text-accent-text" /> Upcoming
+                </h3>
               </div>
-              <div className="space-y-2.5">
+              <ul className="list">
                 {upcoming.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-2 min-w-0">
+                  <li key={i}>
+                    <span className="shrink-0">
                       {item.type === 'MY_LEAVE' ? (
-                        <ListChecks className="w-3.5 h-3.5 text-aurora-violet shrink-0" />
+                        <ListChecks className="w-3.5 h-3.5 text-accent-text" />
                       ) : (
-                        <PartyPopper className={`w-3.5 h-3.5 shrink-0 ${item.type === 'OPTIONAL_HOLIDAY' ? 'text-status-advance' : 'text-ink-400'}`} />
+                        <PartyPopper className="w-3.5 h-3.5 text-muted" />
                       )}
-                      <span className="text-ink-200 truncate">{item.label}</span>
-                    </div>
-                    <span className={`shrink-0 font-semibold px-1.5 py-0.5 rounded-md text-[10px] border ${
-                      item.type === 'MY_LEAVE'
-                        ? 'text-aurora-violet border-aurora-violet/30 bg-aurora-violet/10'
-                        : item.type === 'OPTIONAL_HOLIDAY'
-                          ? 'text-status-advance border-status-advance/30 bg-status-advance/10'
-                          : 'text-ink-400 border-frost/10 bg-frost/5'
+                    </span>
+                    <span className="truncate">{item.label}</span>
+                    <span className={`pill ${
+                      item.type === 'MY_LEAVE' ? 'pill--accent' : item.type === 'OPTIONAL_HOLIDAY' ? 'pill--warning' : 'pill--holiday'
                     }`}>
                       {item.date}
                     </span>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </GlassCard>
           )}
         </div>

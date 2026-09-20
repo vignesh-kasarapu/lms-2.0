@@ -4,8 +4,9 @@ import { getAllLedgerEntries } from '../../api/ledger';
 import { listEmployees } from '../../api/employees';
 import { listLeaveTypes } from '../../api/admin';
 import GlassCard from '../common/GlassCard';
-import Table from '../common/Table';
 import EmptyState from '../common/EmptyState';
+import ResponsiveList from '../common/ResponsiveList';
+import { GhostButton } from '../common/GlassButton';
 
 const ENTRY_TYPES = [
   'OPENING_PRO_RATA_CREDIT', 'PERIODIC_ACCRUAL_CREDIT', 'CARRY_FORWARD_CREDIT',
@@ -14,12 +15,21 @@ const ENTRY_TYPES = [
 ];
 
 const COLUMNS = [
-  { label: 'Date' },
-  { label: 'Employee' },
-  { label: 'Leave Type' },
-  { label: 'Transaction Type' },
-  { label: 'Quantity' },
-  { label: 'Source / Reason' },
+  { key: 'date', label: 'Date', nowrap: true, render: (e) => new Date(e.created_at).toLocaleDateString() },
+  { key: 'employee', label: 'Employee', nowrap: true, render: (e) => e.Employee?.full_name || `#${e.employee_id}` },
+  { key: 'leaveType', label: 'Leave type', nowrap: true, render: (e) => e.LeaveType?.type_name || `#${e.leave_type_id}` },
+  { key: 'entryType', label: 'Transaction type', render: (e) => e.entry_type.replaceAll('_', ' ') },
+  {
+    key: 'quantity',
+    label: 'Quantity',
+    numeric: true,
+    render: (e) => (
+      <span className={`num ${parseFloat(e.quantity) < 0 ? 'text-danger-text' : 'text-success'}`}>
+        {parseFloat(e.quantity) > 0 ? '+' : ''}{e.quantity}
+      </span>
+    ),
+  },
+  { key: 'reason', label: 'Source / reason', render: (e) => e.reason || e.source_reference },
 ];
 
 const emptyFilters = { employeeId: '', leaveTypeId: '', entryType: '', dateFrom: '', dateTo: '' };
@@ -58,64 +68,69 @@ export default function LedgerAdmin() {
 
   return (
     <GlassCard>
-      <h3 className="font-display font-bold text-ink-100 mb-1 flex items-center gap-2">
-        <BookOpenText className="w-4 h-4 text-aurora-violet" /> Leave ledger
+      <h3 className="h3 mb-1 flex items-center gap-2">
+        <BookOpenText className="w-4 h-4 text-accent-text" /> Leave ledger
       </h3>
-      <p className="text-xs text-ink-500 mb-4">Every balance-affecting transaction across every employee, with filters.</p>
+      <p className="small muted mb-4">Every balance-affecting transaction across every employee, with filters.</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-4">
-        <select className="glass-input !py-2 text-xs" value={filters.employeeId} onChange={(e) => updateFilter('employeeId', e.target.value)}>
+        <select className="input" value={filters.employeeId} onChange={(e) => updateFilter('employeeId', e.target.value)}>
           <option value="">All employees</option>
           {employees.map((e) => <option key={e.employee_id} value={e.employee_id}>{e.full_name}</option>)}
         </select>
-        <select className="glass-input !py-2 text-xs" value={filters.leaveTypeId} onChange={(e) => updateFilter('leaveTypeId', e.target.value)}>
+        <select className="input" value={filters.leaveTypeId} onChange={(e) => updateFilter('leaveTypeId', e.target.value)}>
           <option value="">All leave types</option>
           {leaveTypes.map((t) => <option key={t.leave_type_id} value={t.leave_type_id}>{t.type_name}</option>)}
         </select>
-        <select className="glass-input !py-2 text-xs" value={filters.entryType} onChange={(e) => updateFilter('entryType', e.target.value)}>
+        <select className="input" value={filters.entryType} onChange={(e) => updateFilter('entryType', e.target.value)}>
           <option value="">All transaction types</option>
           {ENTRY_TYPES.map((t) => <option key={t} value={t}>{t.replaceAll('_', ' ')}</option>)}
         </select>
-        <input type="date" className="glass-input !py-2 text-xs" value={filters.dateFrom}
+        <input type="date" className="input" value={filters.dateFrom}
           onChange={(e) => updateFilter('dateFrom', e.target.value)} placeholder="From" />
-        <input type="date" className="glass-input !py-2 text-xs" value={filters.dateTo}
+        <input type="date" className="input" value={filters.dateTo}
           onChange={(e) => updateFilter('dateTo', e.target.value)} placeholder="To" />
       </div>
 
       {loading ? (
-        <div className="space-y-2">{[1, 2, 3, 4].map((i) => <div key={i} className="h-11 rounded-xl bg-frost/[0.03] animate-pulse" />)}</div>
+        <div className="space-y-2">{[1, 2, 3, 4].map((i) => <div key={i} className="skel" style={{ height: 44 }} />)}</div>
       ) : error ? (
         <EmptyState icon={AlertTriangle} title="Couldn't load the ledger" description={error} />
       ) : !result.entries.length ? (
-        <p className="text-xs text-ink-500 text-center py-8">No ledger entries match these filters.</p>
+        <p className="small muted text-center py-8">No ledger entries match these filters.</p>
       ) : (
         <>
-          <Table columns={COLUMNS} maxHeight="max-h-[55vh]">
-            {result.entries.map((e) => (
-              <tr key={e.entry_id} className="hover:bg-frost/[0.03] transition-colors">
-                <td className="px-4 py-2.5 text-xs text-ink-400 whitespace-nowrap">{new Date(e.created_at).toLocaleDateString()}</td>
-                <td className="px-4 py-2.5 text-sm text-ink-100 whitespace-nowrap">{e.Employee?.full_name || `#${e.employee_id}`}</td>
-                <td className="px-4 py-2.5 text-xs text-ink-300 whitespace-nowrap">{e.LeaveType?.type_name || `#${e.leave_type_id}`}</td>
-                <td className="px-4 py-2.5 text-xs text-ink-400 whitespace-nowrap">{e.entry_type.replaceAll('_', ' ')}</td>
-                <td className={`px-4 py-2.5 text-sm font-bold whitespace-nowrap ${parseFloat(e.quantity) < 0 ? 'text-status-rejected' : 'text-status-approved'}`}>
-                  {parseFloat(e.quantity) > 0 ? '+' : ''}{e.quantity}
-                </td>
-                <td className="px-4 py-2.5 text-xs text-ink-500 max-w-xs truncate">{e.reason || e.source_reference}</td>
-              </tr>
-            ))}
-          </Table>
+          <ResponsiveList
+            columns={COLUMNS}
+            rows={result.entries}
+            rowKey={(e) => e.entry_id}
+            renderCard={(e) => (
+              <>
+                <header>
+                  <span className="name">{e.Employee?.full_name || `#${e.employee_id}`}</span>
+                  <span className={`num ${parseFloat(e.quantity) < 0 ? 'text-danger-text' : 'text-success'}`}>
+                    {parseFloat(e.quantity) > 0 ? '+' : ''}{e.quantity}
+                  </span>
+                </header>
+                <div className="meta">
+                  <span>{new Date(e.created_at).toLocaleDateString()}</span>
+                  <span>{e.LeaveType?.type_name || `#${e.leave_type_id}`}</span>
+                  <span>{e.entry_type.replaceAll('_', ' ')}</span>
+                </div>
+                <p className="muted small">{e.reason || e.source_reference}</p>
+              </>
+            )}
+          />
 
-          <div className="flex items-center justify-between mt-3 text-xs text-ink-400">
+          <div className="flex items-center justify-between mt-3 small muted">
             <span>{result.total} total entries — page {result.page} of {totalPages}</span>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page <= 1}
-                className="ghost-btn !px-2.5 !py-1.5 disabled:opacity-30">
+              <GhostButton type="button" onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page <= 1} className="btn--sm">
                 <ChevronLeft className="w-3.5 h-3.5" />
-              </button>
-              <button type="button" onClick={() => setPage((p) => Math.min(p + 1, totalPages))} disabled={page >= totalPages}
-                className="ghost-btn !px-2.5 !py-1.5 disabled:opacity-30">
+              </GhostButton>
+              <GhostButton type="button" onClick={() => setPage((p) => Math.min(p + 1, totalPages))} disabled={page >= totalPages} className="btn--sm">
                 <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+              </GhostButton>
             </div>
           </div>
         </>

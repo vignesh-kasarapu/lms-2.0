@@ -6,7 +6,7 @@ import {
 } from '../../api/admin';
 import GlassCard from '../common/GlassCard';
 import Modal from '../common/Modal';
-import { PrimaryButton, GhostButton } from '../common/GlassButton';
+import { PrimaryButton, SecondaryButton, GhostButton, DangerButton } from '../common/GlassButton';
 
 const emptyNew = { templateKey: '', subjectTemplate: '', bodyTemplate: '' };
 
@@ -135,30 +135,29 @@ export default function NotificationTemplateAdmin() {
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
       <GlassCard className="lg:col-span-2">
         <div className="flex items-center justify-between gap-2 mb-4">
-          <h3 className="font-display font-bold text-ink-100 flex items-center gap-2">
-            <MessageSquareText className="w-4 h-4 text-aurora-violet" /> Templates
+          <h3 className="h3 flex items-center gap-2">
+            <MessageSquareText className="w-4 h-4 text-accent-text" /> Templates
           </h3>
-          <button type="button" onClick={() => setAdding(true)} className="ghost-btn !px-2.5 !py-1.5 text-xs" title="Add a new template">
+          <GhostButton onClick={() => setAdding(true)} className="btn--sm" title="Add a new template">
             <Plus className="w-3.5 h-3.5" /> New
-          </button>
+          </GhostButton>
         </div>
         <div className="space-y-1 max-h-[440px] overflow-y-auto">
           {templates.map((t) => (
-            <button key={t.template_key} onClick={() => selectTemplate(t)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between gap-2 ${selectedKey === t.template_key ? 'bg-frost/[0.08] text-ink-50' : 'text-ink-400 hover:bg-frost/[0.04]'}`}>
-              <span className="truncate">{t.template_key}</span>
+            <button
+              key={t.template_key}
+              type="button"
+              onClick={() => selectTemplate(t)}
+              className={`side-link ${selectedKey === t.template_key ? 'is-active' : ''}`}
+            >
+              <span className="truncate flex-1 small">{t.template_key}</span>
               <span className="flex items-center gap-1 shrink-0">
                 {PROTECTED_TEMPLATE_KEYS.has(t.template_key) && (
-                  <span title="Used directly by the application — cannot be deleted, only disabled"
-                    className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 flex items-center gap-0.5">
-                    <ShieldAlert className="w-2.5 h-2.5" /> Protected
+                  <span title="Used directly by the application — cannot be deleted, only disabled" className="pill pill--accent">
+                    <ShieldAlert className="w-3 h-3" /> Protected
                   </span>
                 )}
-                {!t.is_active && (
-                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-status-rejected/10 text-status-rejected border border-status-rejected/30">
-                    Disabled
-                  </span>
-                )}
+                {!t.is_active && <span className="pill pill--muted">Disabled</span>}
               </span>
             </button>
           ))}
@@ -167,39 +166,38 @@ export default function NotificationTemplateAdmin() {
 
       <GlassCard className="lg:col-span-3">
         {!selected ? (
-          <p className="text-sm text-ink-500">Select a template to edit.</p>
+          <p className="small muted">Select a template to edit.</p>
         ) : (
           <div className="space-y-3">
             {selectedIsProtected && (
-              <div className="flex items-start gap-2 text-xs font-medium text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-3">
-                <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>This template is used directly by the application and can&apos;t be deleted — you can still edit or disable it.</span>
+              <div className="alert alert--info" role="status">
+                <ShieldAlert />
+                <p>This template is used directly by the application and can&apos;t be deleted — you can still edit or disable it.</p>
               </div>
             )}
-            <div>
-              <label className="text-xs font-medium text-ink-400 mb-1.5 block">Subject</label>
-              <input className="glass-input" value={draft.subjectTemplate} onChange={(e) => setDraft((d) => ({ ...d, subjectTemplate: e.target.value }))} />
+            <div className="field">
+              <label>Subject</label>
+              <input className="input" value={draft.subjectTemplate} onChange={(e) => setDraft((d) => ({ ...d, subjectTemplate: e.target.value }))} />
             </div>
-            <div>
-              <label className="text-xs font-medium text-ink-400 mb-1.5 block">Body — use {'{{tokenName}}'} for substitutions</label>
-              <textarea className="glass-input min-h-[140px] resize-none font-mono" value={draft.bodyTemplate} onChange={(e) => setDraft((d) => ({ ...d, bodyTemplate: e.target.value }))} />
+            <div className="field">
+              <label>Body — use {'{{tokenName}}'} for substitutions</label>
+              <textarea className="input min-h-[140px] resize-none font-mono" value={draft.bodyTemplate} onChange={(e) => setDraft((d) => ({ ...d, bodyTemplate: e.target.value }))} />
             </div>
             {error && (
-              <div className="flex items-start gap-2.5 text-xs font-semibold text-status-rejected bg-status-rejected/10 border border-status-rejected/30 rounded-xl p-3">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {error}
+              <div className="alert alert--danger" role="alert">
+                <AlertTriangle /> <p>{error}</p>
               </div>
             )}
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="actions">
               <PrimaryButton onClick={save} disabled={saving}>
                 <Save className="w-3.5 h-3.5" /> {saving ? 'Saving…' : 'Save template'}
               </PrimaryButton>
-              <GhostButton onClick={toggleActive} disabled={togglingKey === selectedKey} className="text-xs disabled:opacity-50">
+              <GhostButton onClick={toggleActive} disabled={togglingKey === selectedKey}>
                 {togglingKey === selectedKey ? 'Working…' : selected.is_active ? 'Disable' : 'Enable'}
               </GhostButton>
-              <button type="button" onClick={() => setConfirmingDelete(true)}
-                className="ghost-btn !px-3 !py-2 text-xs hover:border-status-rejected/40 hover:text-status-rejected ml-auto">
+              <DangerButton type="button" onClick={() => setConfirmingDelete(true)} className="ml-auto">
                 <Trash2 className="w-3.5 h-3.5" /> Delete
-              </button>
+              </DangerButton>
             </div>
           </div>
         )}
@@ -207,22 +205,22 @@ export default function NotificationTemplateAdmin() {
 
       <Modal open={adding} onClose={() => setAdding(false)} title="New notification template" maxWidth="max-w-lg">
         <form onSubmit={submitNew} className="space-y-3">
-          <div>
-            <label className="text-xs font-medium text-ink-400 mb-1.5 block">Template key</label>
-            <input className="glass-input font-mono" placeholder="e.g. CUSTOM_REMINDER" value={newTemplate.templateKey}
+          <div className="field">
+            <label>Template key</label>
+            <input className="input font-mono" placeholder="e.g. CUSTOM_REMINDER" value={newTemplate.templateKey}
               onChange={(e) => setNewTemplate((t) => ({ ...t, templateKey: e.target.value.toUpperCase().replace(/\s+/g, '_') }))} required />
           </div>
-          <div>
-            <label className="text-xs font-medium text-ink-400 mb-1.5 block">Subject</label>
-            <input className="glass-input" value={newTemplate.subjectTemplate}
+          <div className="field">
+            <label>Subject</label>
+            <input className="input" value={newTemplate.subjectTemplate}
               onChange={(e) => setNewTemplate((t) => ({ ...t, subjectTemplate: e.target.value }))} required />
           </div>
-          <div>
-            <label className="text-xs font-medium text-ink-400 mb-1.5 block">Body — use {'{{tokenName}}'} for substitutions</label>
-            <textarea className="glass-input min-h-[120px] resize-none font-mono" value={newTemplate.bodyTemplate}
+          <div className="field">
+            <label>Body — use {'{{tokenName}}'} for substitutions</label>
+            <textarea className="input min-h-[120px] resize-none font-mono" value={newTemplate.bodyTemplate}
               onChange={(e) => setNewTemplate((t) => ({ ...t, bodyTemplate: e.target.value }))} required />
           </div>
-          {createError && <p className="text-xs font-semibold text-status-rejected bg-status-rejected/10 p-2 rounded-lg">{createError}</p>}
+          {createError && <p className="error-msg">{createError}</p>}
           <PrimaryButton type="submit" disabled={creating} className="w-full">
             {creating ? 'Creating…' : 'Create template'}
           </PrimaryButton>
@@ -232,28 +230,26 @@ export default function NotificationTemplateAdmin() {
       <Modal open={confirmingDelete} onClose={() => setConfirmingDelete(false)} title="Delete this template?" maxWidth="max-w-md">
         <div className="space-y-4">
           {selectedIsProtected ? (
-            <p className="text-sm text-ink-200">
+            <p className="small">
               <strong className="font-mono">{selectedKey}</strong> is used directly by the application and cannot be
               deleted — disable it instead if you don&apos;t want it sent.
             </p>
           ) : (
-            <p className="text-sm text-ink-200">
+            <p className="small">
               Really delete <strong className="font-mono">{selectedKey}</strong>? This cannot be undone.
             </p>
           )}
-          {error && <p className="text-xs font-semibold text-status-rejected bg-status-rejected/10 p-2 rounded-lg">{error}</p>}
+          {error && <p className="error-msg">{error}</p>}
           <div className="flex justify-end gap-2">
-            <GhostButton onClick={() => setConfirmingDelete(false)} disabled={deleting} className="text-xs">Cancel</GhostButton>
+            <GhostButton onClick={() => setConfirmingDelete(false)} disabled={deleting}>Cancel</GhostButton>
             {selectedIsProtected ? (
-              <button type="button" onClick={disableInstead} disabled={deleting}
-                className="bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all disabled:opacity-40">
+              <SecondaryButton type="button" onClick={disableInstead} disabled={deleting}>
                 {deleting ? 'Disabling…' : 'Disable instead'}
-              </button>
+              </SecondaryButton>
             ) : (
-              <button type="button" onClick={remove} disabled={deleting}
-                className="bg-status-rejected hover:bg-rose-600 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all disabled:opacity-40">
+              <DangerButton type="button" onClick={remove} disabled={deleting}>
                 {deleting ? 'Deleting…' : 'Confirm delete'}
-              </button>
+              </DangerButton>
             )}
           </div>
         </div>
