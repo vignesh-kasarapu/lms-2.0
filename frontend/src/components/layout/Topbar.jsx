@@ -68,7 +68,7 @@ export default function Topbar({ title }) {
   const RoleIcon = isHrAdmin ? ShieldCheck : isManager ? UserCheck : Sparkles;
 
   return (
-    <header className="topbar z-40 rounded-lg mb-6">
+    <header className="topbar z-40 mb-6">
       <div className="flex items-center gap-3.5 min-w-0 flex-1">
         <h1 className="text-base sm:text-2xl font-display font-medium truncate" style={{ letterSpacing: 'var(--font-tracking-display)' }}>{title}</h1>
         <span className="pill pill--muted hidden md:inline-flex shrink-0">
