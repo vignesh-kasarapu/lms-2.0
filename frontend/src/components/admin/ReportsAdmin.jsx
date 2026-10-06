@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FileBarChart, AlertTriangle } from 'lucide-react';
+import { FileBarChart, AlertTriangle, Download } from 'lucide-react';
 import { getLeaveTakenReport, getLopReport } from '../../api/reports';
 import { getDashboard, listEmployees, getWatchableEmployees } from '../../api/employees';
 import { listDepartments } from '../../api/admin';
@@ -27,6 +27,42 @@ const LOP_COLUMNS = [
   { key: 'days', label: 'Days', numeric: true, render: (r) => <span className="num">{r.deducted_days}</span> },
   { key: 'converted', label: 'Converted', nowrap: true, render: (r) => new Date(r.converted_at).toLocaleDateString() },
 ];
+
+const LEAVE_TAKEN_CSV_FIELDS = [
+  ['Employee', (r) => r.employee?.full_name],
+  ['Leave type', (r) => r.LeaveType?.type_name],
+  ['Start date', (r) => r.start_date],
+  ['End date', (r) => r.end_date],
+  ['Days', (r) => r.deducted_days],
+  ['Status', (r) => r.state],
+];
+
+const LOP_CSV_FIELDS = [
+  ['Employee', (r) => r.Employee?.full_name],
+  ['Start date', (r) => r.start_date],
+  ['End date', (r) => r.end_date],
+  ['Days', (r) => r.deducted_days],
+  ['Converted', (r) => new Date(r.converted_at).toLocaleDateString()],
+];
+
+function toCsvCell(value) {
+  const text = value === null || value === undefined ? '' : String(value);
+  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+function downloadCsv(filename, fields, rows) {
+  const lines = [
+    fields.map(([label]) => toCsvCell(label)).join(','),
+    ...rows.map((row) => fields.map(([, get]) => toCsvCell(get(row))).join(',')),
+  ];
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 const emptyFilters = { from: '', to: '', leaveTypeId: '', status: '', employeeId: '', departmentId: '', managerId: '' };
 
@@ -88,17 +124,29 @@ export default function ReportsAdmin() {
 
   const updateFilter = (key, value) => setFilters((f) => ({ ...f, [key]: value }));
 
+  const exportCsv = () => {
+    const [fields, name] = view === 'leave-taken'
+      ? [LEAVE_TAKEN_CSV_FIELDS, 'leave-taken-report']
+      : [LOP_CSV_FIELDS, 'lop-report'];
+    downloadCsv(`${name}-${new Date().toISOString().slice(0, 10)}.csv`, fields, rows);
+  };
+
   return (
     <GlassCard>
       <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
         <h3 className="h3 flex items-center gap-2">
           <FileBarChart className="w-4 h-4 text-accent-text" /> Reports
         </h3>
-        <div className="seg" role="group" aria-label="Report view">
-          <button type="button" aria-pressed={view === 'leave-taken'} onClick={() => setView('leave-taken')}>Leave taken</button>
-          {isHrAdmin && (
-            <button type="button" aria-pressed={view === 'lop'} onClick={() => setView('lop')}>Loss of pay</button>
-          )}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="seg" role="group" aria-label="Report view">
+            <button type="button" aria-pressed={view === 'leave-taken'} onClick={() => setView('leave-taken')}>Leave taken</button>
+            {isHrAdmin && (
+              <button type="button" aria-pressed={view === 'lop'} onClick={() => setView('lop')}>Loss of pay</button>
+            )}
+          </div>
+          <button type="button" className="btn btn--secondary btn--sm" onClick={exportCsv} disabled={!rows.length}>
+            <Download className="w-4 h-4" /> Export CSV
+          </button>
         </div>
       </div>
 

@@ -54,7 +54,20 @@ async function escalateOneLevel(request) {
   const priorApproverId = request.current_approver_id;
 
   // BR-36: escalation terminates at HR/Admin; self-approval never results from escalation.
-  request.current_approver_id = nextApprover ? nextApprover.employee_id : await findHrAdminQueueId();
+  const resolvedNextApproverId = nextApprover ? nextApprover.employee_id : await findHrAdminQueueId();
+
+  // Once already parked at the terminal HR/Admin queue, a further SLA breach would just
+  // reassign that same HR/Admin to themselves — a no-op "escalation" that otherwise fired a
+  // fresh SLA_ESCALATED audit row and duplicate ESCALATION_NOTICE/NEW_REQUEST notifications on
+  // every subsequent SLA cycle for as long as the request sat undecided. Reset the clock
+  // silently instead so reminders keep working without an endless false escalation trail.
+  if (String(resolvedNextApproverId) === String(priorApproverId)) {
+    request.sla_started_at = new Date();
+    await request.save();
+    return;
+  }
+
+  request.current_approver_id = resolvedNextApproverId;
   request.sla_started_at = new Date();
   await request.save();
 

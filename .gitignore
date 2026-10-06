@@ -14,3 +14,4 @@ frontend/.env
 storage/
 *.log
 ui-theme/
+.playwright-mcp/

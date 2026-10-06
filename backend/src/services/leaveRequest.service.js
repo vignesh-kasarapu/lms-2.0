@@ -110,7 +110,7 @@ async function routeAndFinalizeSubmission({ request, employee, employeeId, leave
   if (selfEligible) {
     await approveStageInternal({ request, stage: 'SELF', actorId: employeeId, onBehalfOfId: null, transaction });
   } else {
-    const firstStage = await approvalRouting.getFirstStageApprover(employee);
+    const firstStage = await approvalRouting.getFirstStageApprover(employee, startDate);
     if (!firstStage) throw new LeaveRequestError('NO_APPROVER', 'No reporting manager on record and no self-approval grant exists.');
     request.current_approver_id = firstStage.approverId;
     request.sla_started_at = new Date();
@@ -325,20 +325,21 @@ async function decide({ requestId, actorId, decision, reason }) {
       throw new LeaveRequestError('PERMISSION_DENIED', 'Only HR/Admin can decide a request at this stage.', 403);
     }
 
-    // Preserve the delegation context in the audit/approval row. The request
-    // may still be pending after the delegation is revoked, so match against
-    // the delegation active when the request was originally submitted.
+    // Preserve the delegation context in the audit/approval row. Matched against the
+    // leave's own start_date — the same date getFirstStageApprover used to route it here
+    // in the first place — not the submission timestamp, so a request whose leave dates
+    // fall inside the delegation window is recognised even if it was submitted outside it
+    // (and vice versa: the request may still be pending after the delegation is revoked).
     let onBehalfOfId = null;
     if (stage === 'MANAGER') {
       const requestEmployee = await Employee.findByPk(request.employee_id, { transaction });
-      const submittedAt = new Date(request.application_timestamp || request.createdAt);
       const delegation = requestEmployee?.reporting_manager_id
         ? await Delegation.findOne({
           where: {
             nominator_id: requestEmployee.reporting_manager_id,
             delegate_id: actorId,
-            from_date: { [Op.lte]: submittedAt },
-            to_date: { [Op.gte]: submittedAt },
+            from_date: { [Op.lte]: request.start_date },
+            to_date: { [Op.gte]: request.start_date },
           },
           order: [['delegation_id', 'DESC']],
           transaction,
@@ -422,7 +423,7 @@ async function requestCancellation({ requestId, employeeId }) {
     request.state = 'CANCELLATION_REQUESTED';
 
     const employee = await Employee.findByPk(employeeId, { transaction });
-    const firstStage = await approvalRouting.getFirstStageApprover(employee);
+    const firstStage = await approvalRouting.getFirstStageApprover(employee, request.start_date);
     // Route the cancellation decision the same way the original request was routed
     // (manager or their active delegate) — without this, decideCancellation has no
     // way to check who's actually allowed to decide it.
