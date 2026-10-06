@@ -164,6 +164,9 @@ async function updateEmployeeDetails(employeeId, payload, actorId) {
   if (payload.designation !== undefined && !String(payload.designation).trim()) {
     throw Object.assign(new Error('Designation is required.'), { status: 400, code: 'VALIDATION_ERROR' });
   }
+  if (payload.workEmail !== undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(payload.workEmail).trim())) {
+    throw Object.assign(new Error('Enter a valid work email address.'), { status: 400, code: 'VALIDATION_ERROR' });
+  }
 
   const updates = {};
   if (payload.fullName !== undefined) updates.full_name = payload.fullName.trim();
@@ -172,6 +175,7 @@ async function updateEmployeeDetails(employeeId, payload, actorId) {
   if (payload.gender !== undefined) updates.gender = payload.gender || null;
   if (payload.maritalStatus !== undefined) updates.marital_status = payload.maritalStatus || null;
   if (payload.regionId !== undefined) updates.region_id = payload.regionId || null;
+  if (payload.workEmail !== undefined) updates.work_email = payload.workEmail.trim();
   if (payload.departmentName?.trim()) {
     updates.department_id = await resolveDepartmentId(payload.departmentName);
   }

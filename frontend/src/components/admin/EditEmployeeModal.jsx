@@ -13,6 +13,7 @@ export default function EditEmployeeModal({ employee, managementLevels, regions,
     gender: employee.gender || '',
     maritalStatus: employee.marital_status || '',
     regionId: employee.region_id || '',
+    workEmail: employee.work_email || '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -49,6 +50,11 @@ export default function EditEmployeeModal({ employee, managementLevels, regions,
           <label>Department</label>
           <input className="input" value={form.departmentName}
             onChange={(e) => setForm((f) => ({ ...f, departmentName: e.target.value }))} required />
+        </div>
+        <div className="field">
+          <label>Work email</label>
+          <input type="email" className="input" value={form.workEmail}
+            onChange={(e) => setForm((f) => ({ ...f, workEmail: e.target.value }))} required />
         </div>
         {showManagementLevel && (
           <div className="field">
