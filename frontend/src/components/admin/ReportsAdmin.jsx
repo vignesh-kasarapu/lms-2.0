@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { FileBarChart, AlertTriangle } from 'lucide-react';
-import { getLeaveTakenReport, getLopReport } from '../../api/reports';
+import { FileBarChart, AlertTriangle, Download } from 'lucide-react';
+import { getLeaveTakenReport, getLopReport, downloadReport } from '../../api/reports';
 import { getDashboard, listEmployees, getWatchableEmployees } from '../../api/employees';
 import { listDepartments } from '../../api/admin';
 import { useAuth } from '../../context/AuthContext';
@@ -86,6 +86,20 @@ export default function ReportsAdmin() {
       });
   }, [view, filters]);
 
+  const [exporting, setExporting] = useState(null);
+  const exportRows = async (format) => {
+    setExporting(format);
+    try {
+      const params = { ...filters };
+      Object.keys(params).forEach((k) => { if (!params[k]) delete params[k]; });
+      await downloadReport(view, params, format);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setExporting(null);
+    }
+  };
+
   const updateFilter = (key, value) => setFilters((f) => ({ ...f, [key]: value }));
 
   return (
@@ -99,6 +113,14 @@ export default function ReportsAdmin() {
           {isHrAdmin && (
             <button type="button" aria-pressed={view === 'lop'} onClick={() => setView('lop')}>Loss of pay</button>
           )}
+        </div>
+        <div className="actions">
+          <button type="button" className="btn btn--secondary btn--sm" disabled={!rows.length || !!exporting} onClick={() => exportRows('csv')}>
+            <Download /> {exporting === 'csv' ? 'Exporting…' : 'CSV'}
+          </button>
+          <button type="button" className="btn btn--secondary btn--sm" disabled={!rows.length || !!exporting} onClick={() => exportRows('xlsx')}>
+            <Download /> {exporting === 'xlsx' ? 'Exporting…' : 'Excel'}
+          </button>
         </div>
       </div>
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, CalendarDays, Paperclip, FileText, PartyPopper, ListChecks } from 'lucide-react';
-import { previewApplication, submitRequest, saveDraft, getMyRequests } from '../api/leaveRequests';
+import { previewApplication, submitRequest, saveDraft, submitDraft, discardDraft, getMyRequests } from '../api/leaveRequests';
 import { getDashboard } from '../api/employees';
 import { listHolidays, getOptionalHolidaySummary } from '../api/holidays';
 import { uploadAttachment } from '../api/attachments';
@@ -105,9 +105,21 @@ export default function ApplyLeave() {
     setError(null);
     setSubmitting(true);
     try {
-      const res = await submitRequest(form);
       if (file && selectedType?.attachments) {
-        await uploadAttachment(res.data.request_id, file).catch((err) => setError(`Request submitted, but attachment failed: ${err.message}`));
+        // Draft -> upload -> submit, so the file is on the request before the
+        // server's medical-certificate check runs (a sick request over the
+        // configured length is refused without one).
+        const draft = await saveDraft(form);
+        const draftId = draft.data.request_id;
+        try {
+          await uploadAttachment(draftId, file);
+          await submitDraft(draftId);
+        } catch (err) {
+          await discardDraft(draftId).catch(() => {});
+          throw err;
+        }
+      } else {
+        await submitRequest(form);
       }
       celebrate();
       navigate('/my-requests');
@@ -140,7 +152,7 @@ export default function ApplyLeave() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Leave type */}
             <div className="field">
-              <label>Leave type</label>
+              <label className="req">Leave type</label>
               {typesError && (
                 <div className="alert alert--danger" role="alert">
                   <AlertTriangle />
@@ -224,7 +236,7 @@ export default function ApplyLeave() {
             {selectedType?.attachments && (
               <div className="field">
                 <label className="flex items-center gap-1.5">
-                  <Paperclip className="w-3.5 h-3.5" /> Supporting document (medical / official)
+                  <Paperclip className="w-3.5 h-3.5" /> Supporting document (medical certificate — required for long sick leave)
                 </label>
                 <label className="btn btn--secondary w-full justify-center cursor-pointer" style={{ borderStyle: 'dashed' }}>
                   <FileText className="w-4 h-4" />

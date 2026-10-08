@@ -24,6 +24,8 @@ CONFIG_DEFAULTS: dict[str, tuple[str, str]] = {
     "sick_leave.alert_threshold_days": ("3", "INT"),  # BR-43
     "sick_leave.alert_supervisor_enabled": ("true", "BOOL"),  # BR-45
     "sick_leave.alert_hr_enabled": ("true", "BOOL"),  # BR-45
+    "sick_leave.medical_cert_threshold_days": ("3", "INT"),  # sick requests longer than this need a medical attachment
+    "leave.max_days_per_request": ("15", "INT"),  # max deducted working days in one request; 0 = no limit
     "holiday.optional_holiday_quota_override": ("0", "INT"),  # 0 = auto-compute
 }
 

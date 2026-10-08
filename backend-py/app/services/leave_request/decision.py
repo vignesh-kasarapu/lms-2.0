@@ -37,15 +37,14 @@ def decide(db: Session, request_id: int, actor_id: int, decision: str, reason: s
             raise AppError("PERMISSION_DENIED", "Only HR/Admin may decide a request at this stage.", status=403)
 
     # Preserve the delegation context in the audit/approval row — match
-    # against the delegation active when the request was originally submitted
+    # against the delegation covering the request's leave start date (the one that routed it)
     # (the request may still be pending after the delegation is revoked).
     on_behalf_of_id = None
     if stage == "MANAGER":
         request_employee = employee_dao.find_by_id(db, request.employee_id)
-        submitted_at = request.application_timestamp or request.created_at
         if request_employee and request_employee.reporting_manager_id:
             delegation = delegation_dao.find_match_for_audit_context(
-                db, request_employee.reporting_manager_id, actor_id, submitted_at.date()
+                db, request_employee.reporting_manager_id, actor_id, request.start_date
             )
             on_behalf_of_id = delegation.nominator_id if delegation else None
 

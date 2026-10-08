@@ -54,7 +54,7 @@ def route_and_finalize_submission(db: Session, request, employee, leave_type):
     if self_eligible:
         approve_stage_internal(db, request, stage="SELF", actor_id=employee.employee_id, on_behalf_of_id=None)
     else:
-        first_stage = approval_routing_service.get_first_stage_approver(db, employee)
+        first_stage = approval_routing_service.get_first_stage_approver(db, employee, request.start_date)
         if first_stage is None:
             raise AppError("NO_APPROVER", "No reporting manager on record and no self-approval grant exists.")
         request.current_approver_id = first_stage.approver_id

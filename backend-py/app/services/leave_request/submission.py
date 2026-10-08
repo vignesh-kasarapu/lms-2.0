@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import AppError
 from app.dao import employee_dao, leave_request_dao, leave_type_dao, leave_year_dao
 from app.services import audit_service, notification_service
-from app.services.leave_request import gates, routing
+from app.services.leave_request import gates, routing, validation
 
 
 def submit_request(
@@ -26,6 +26,7 @@ def submit_request(
     leave_year = leave_year_dao.find_current(db)
     gate_result = gates.run_submission_gates(db, employee, leave_type, start_date, end_date, is_half_day, leave_year)
     breakdown = gate_result["breakdown"]
+    validation.assert_medical_attachment(db, leave_type, breakdown["deducted_working_days"], None)
 
     request = leave_request_dao.create(
         db, employee_id=employee_id, leave_type_id=leave_type_id, leave_year_id=leave_year.leave_year_id,
@@ -70,6 +71,7 @@ def submit_draft(db: Session, request_id: int, employee_id: int):
         exclude_request_id=request_id,
     )
     breakdown = gate_result["breakdown"]
+    validation.assert_medical_attachment(db, leave_type, breakdown["deducted_working_days"], request_id)
 
     request.state = "PENDING_MANAGER"
     request.deducted_days = breakdown["deducted_working_days"]

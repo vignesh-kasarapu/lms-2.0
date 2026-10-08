@@ -6,7 +6,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError
-from app.services import approval_routing_service, balance_service, blackout_period_service, business_day_service, team_capacity_service
+from app.services import approval_routing_service, balance_service, config_service, blackout_period_service, business_day_service, team_capacity_service
 from app.services.leave_request import validation
 
 
@@ -25,6 +25,13 @@ def run_submission_gates(
     )
     if breakdown["deducted_working_days"] <= 0:
         raise AppError("ZERO_DEDUCTION", "This span deducts zero working days — nothing to submit.")
+
+    max_days = config_service.get(db, "leave.max_days_per_request")
+    if max_days > 0 and breakdown["deducted_working_days"] > max_days:
+        raise AppError(
+            "MAX_DAYS_EXCEEDED",
+            f"A single request cannot exceed {max_days} working days (this one is {breakdown['deducted_working_days']:g}). Split it into separate requests.",
+        )
 
     balance = balance_service.get_effective_balance(db, employee.employee_id, leave_type.leave_type_id, leave_year.leave_year_id)
     # BR-11: warn, never block.

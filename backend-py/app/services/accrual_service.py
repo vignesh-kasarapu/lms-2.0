@@ -38,6 +38,37 @@ def post_opening_pro_rata(db: Session, employee_id: int) -> None:
     db.commit()
 
 
+def post_entitlement_revision(
+    db: Session, leave_type_id: int, old_entitlement: float, new_entitlement: float, actor_id: int | None
+) -> int:
+    """An entitlement edit must reach balances that already exist. Posts the
+    difference to every active employee for the current leave year, scaled by
+    the same joining-date pro-rata ratio the opening credit used (BR-13), so
+    a mid-year joiner gets a proportionate share. Returns employees adjusted."""
+    delta = float(new_entitlement) - float(old_entitlement)
+    if delta == 0:
+        return 0
+    leave_year = leave_year_dao.find_current(db)
+    total_days_in_year = (leave_year.end_date - leave_year.start_date).days + 1
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    adjusted = 0
+    for employee in employee_dao.list_active(db):
+        days_from_join = (leave_year.end_date - employee.date_of_joining).days + 1
+        ratio = max(min(days_from_join / total_days_in_year, 1), 0)
+        quantity = round(delta * ratio, 1)
+        if quantity == 0:
+            continue
+        ledger_dao.create_entry(
+            db, employee_id=employee.employee_id, leave_type_id=leave_type_id, leave_year_id=leave_year.leave_year_id,
+            entry_type="ENTITLEMENT_REVISION_ADJUSTMENT", quantity=quantity,
+            source_reference=f"entitlement_revision:{leave_type_id}:{employee.employee_id}:{stamp}",
+            actor_id=actor_id, is_system_actor=actor_id is None,
+            reason=f"Annual entitlement changed from {float(old_entitlement):g} to {float(new_entitlement):g} days.",
+        )
+        adjusted += 1
+    return adjusted
+
+
 def run_periodic_accrual(db: Session, period_key: str) -> None:
     """LMS-055: periodic accrual posting, uniquely keyed on (employee, leave
     type, period) via the ledger's source_reference — never double-credits."""

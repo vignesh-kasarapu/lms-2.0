@@ -165,6 +165,10 @@
   /* ---------- forms ---------- */
   .field { display: flex; flex-direction: column; gap: 6px; }
   .field label, .legend { font-weight: var(--font-weight-medium); font-size: var(--font-size-2); }
+  /* Required marker: any .field whose control is `required`, or a label opted in with .req */
+  .field:has(> :required) > label::after, label.req::after {
+    content: " *"; color: var(--color-danger-text); font-weight: var(--font-weight-medium);
+  }
   .hint { color: var(--color-text-muted); font-size: var(--font-size-1); }
   .input {
     min-height: var(--control-height); padding: 0 var(--space-3); border-radius: var(--radius-sm);

@@ -40,7 +40,7 @@ def request_cancellation(db: Session, request_id: int, employee_id: int):
         raise AppError("INVALID_STATE", "Only an approved request can have cancellation requested.")
 
     employee = employee_dao.find_by_id(db, employee_id)
-    first_stage = approval_routing_service.get_first_stage_approver(db, employee)
+    first_stage = approval_routing_service.get_first_stage_approver(db, employee, request.start_date)
     request.state = "CANCELLATION_REQUESTED"
     request.current_approver_id = first_stage.approver_id if first_stage else None
     db.flush()

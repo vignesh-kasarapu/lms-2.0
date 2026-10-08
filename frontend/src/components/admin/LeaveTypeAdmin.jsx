@@ -38,7 +38,7 @@ export default function LeaveTypeAdmin() {
     setSaving(true);
     setError(null);
     try {
-      await createLeaveType(form);
+      await createLeaveType({ ...form, carryForwardCap: form.carriesForward && form.carryForwardCap !== '' ? Number(form.carryForwardCap) : null });
       setForm(empty);
       load();
     } catch (err) {
@@ -188,7 +188,13 @@ function LeaveTypeEditModal({ leaveType, onClose, onSaved }) {
     setSaving(true);
     setError(null);
     try {
-      await updateLeaveTypePolicy(leaveType.leave_type_id, values);
+      // Blank cap = no cap: send an explicit null instead of "" (which the API rejects).
+      const cap = values.carriesForward && values.carryForwardCap !== '' ? Number(values.carryForwardCap) : null;
+      await updateLeaveTypePolicy(leaveType.leave_type_id, {
+        ...values,
+        annualEntitlement: values.annualEntitlement === '' ? undefined : Number(values.annualEntitlement),
+        carryForwardCap: cap,
+      });
       onSaved();
     } catch (err) {
       setError(err.message);
@@ -204,8 +210,8 @@ function LeaveTypeEditModal({ leaveType, onClose, onSaved }) {
       ) : (
         <div className="space-y-4">
           <div className="field">
-            <label>Annual entitlement (days)</label>
-            <input type="number" step="0.5" className="input" value={values.annualEntitlement}
+            <label className="req">Annual entitlement (days)</label>
+            <input type="number" step="0.5" className="input" value={values.annualEntitlement} required
               onChange={(e) => setValues((v) => ({ ...v, annualEntitlement: e.target.value }))} />
           </div>
           <label className="chk">

@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError
-from app.dao import leave_request_dao
+from app.dao import leave_request_attachment_dao, leave_request_dao
 from app.services import config_service
 
 
@@ -33,6 +33,23 @@ def assert_no_overlap(db: Session, employee_id: int, start_date: date, end_date:
             "OVERLAP",
             f"This overlaps an existing request (#{existing.request_id}, {existing.start_date} to {existing.end_date}).",
         )
+
+
+def assert_medical_attachment(db: Session, leave_type, deducted_days: float, request_id: int | None) -> None:
+    """Sick leave longer than the configured threshold needs a medical file.
+    A fresh submission has no request row to attach to yet, so it is refused
+    and the client must go through draft -> upload -> submit-draft."""
+    if not leave_type.is_sick_leave:
+        return
+    threshold = config_service.get(db, "sick_leave.medical_cert_threshold_days")
+    if float(deducted_days) <= threshold:
+        return
+    if request_id is not None and leave_request_attachment_dao.list_for_request(db, request_id):
+        return
+    raise AppError(
+        "MEDICAL_CERT_REQUIRED",
+        f"Sick leave longer than {threshold} day(s) needs a medical certificate attached before it can be submitted.",
+    )
 
 
 def assert_within_backdating_window(db: Session, start_date: date, leave_year) -> None:

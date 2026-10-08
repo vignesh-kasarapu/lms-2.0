@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError
 from app.dao import leave_type_dao
-from app.services import audit_service
+from app.services import accrual_service, audit_service
 
 
 def list_leave_types(db: Session):
@@ -79,14 +79,25 @@ def update_leave_type_policy(db: Session, leave_type_id: int, payload: dict, act
         "is_selectable_by_employee": leave_type.is_selectable_by_employee,
     }
 
+    entitlement_changed_from = None
     if policy is not None:
         if payload.get("annual_entitlement") is not None:
+            if float(payload["annual_entitlement"]) != float(policy.annual_entitlement):
+                entitlement_changed_from = float(policy.annual_entitlement)
             policy.annual_entitlement = payload["annual_entitlement"]
         if payload.get("carries_forward") is not None:
             policy.carries_forward = payload["carries_forward"]
-        if payload.get("carry_forward_cap") is not None:
+        # A blank cap means "no cap": null is a real value here, distinct from
+        # the key being absent (payload is built with exclude_unset).
+        if "carry_forward_cap" in payload:
             policy.carry_forward_cap = payload["carry_forward_cap"]
+        if policy.carries_forward is False:
+            policy.carry_forward_cap = None
         policy.updated_by = actor_id
+        if entitlement_changed_from is not None and leave_type.is_balance_affecting:
+            accrual_service.post_entitlement_revision(
+                db, leave_type_id, entitlement_changed_from, float(policy.annual_entitlement), actor_id
+            )
         db.commit()
 
     # Whether employees can apply for this type at all — independent of the

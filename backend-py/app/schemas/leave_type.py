@@ -1,4 +1,9 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+
+def _blank_to_none(value):
+    """The admin form sends "" for an empty optional number — that means "no value", not a type error."""
+    return None if isinstance(value, str) and not value.strip() else value
 
 
 class LeaveTypeOut(BaseModel):
@@ -52,9 +57,13 @@ class LeaveTypeCreateIn(BaseModel):
     accrual_method: str  # MONTHLY|QUARTERLY|ANNUAL
     posting_day: int | None = None
 
+    _blank_cap = field_validator("carry_forward_cap", "posting_day", mode="before")(_blank_to_none)
+
 
 class LeaveTypePolicyUpdateIn(BaseModel):
     annual_entitlement: float | None = None
     carries_forward: bool | None = None
     carry_forward_cap: float | None = None
     is_selectable_by_employee: bool | None = None
+
+    _blank_cap = field_validator("annual_entitlement", "carry_forward_cap", mode="before")(_blank_to_none)
