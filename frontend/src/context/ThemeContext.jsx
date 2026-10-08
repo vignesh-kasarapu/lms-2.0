@@ -22,7 +22,7 @@ function writeStored(key, value) {
 }
 
 export function ThemeProvider({ children }) {
-  const [preset, setPreset] = useState(() => readStored(PRESET_KEY, 'harbour'));
+  const [preset, setPreset] = useState(() => readStored(PRESET_KEY, 'linen'));
   const [mode, setMode] = useState(() => readStored(MODE_KEY, 'system'));
 
   useEffect(() => {

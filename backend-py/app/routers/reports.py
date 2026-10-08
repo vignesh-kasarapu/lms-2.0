@@ -1,0 +1,92 @@
+"""Thin — mirrors backend/src/routes/reports.routes.js +
+reports.controller.js."""
+from datetime import date, datetime
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from app.core.db import get_db
+from app.core.deps import CurrentUser, require_role
+from app.core.responses import ok
+from app.dao import leave_type_dao
+from app.schemas.reports import AuditLogRowOut, BalanceReportRowOut, LeaveTakenRowOut, LopReportRowOut
+from app.services import reports_service
+
+router = APIRouter()
+
+
+@router.get("/leave-taken")
+def leave_taken(
+    from_date: date | None = None, to_date: date | None = None, leave_type_id: int | None = None, state: str | None = None,
+    employee_id: int | None = None, department_id: int | None = None, grade_id: int | None = None, manager_id: int | None = None,
+    db: Session = Depends(get_db), user: CurrentUser = Depends(require_role("MANAGER", "HR_ADMIN")),
+):
+    scope = "HR" if "HR_ADMIN" in user.roles else "MANAGER"
+    rows = reports_service.leave_taken_report(
+        db, from_date=from_date, to_date=to_date, leave_type_id=leave_type_id, state=state, employee_id=employee_id,
+        department_id=department_id, grade_id=grade_id, manager_id=manager_id, scope=scope, viewer_id=user.employee_id,
+    )
+    type_names = {t.leave_type_id: t.type_name for t in leave_type_dao.list_all(db)}
+    return ok(
+        [
+            LeaveTakenRowOut(
+                request_id=r.request_id, employee_id=e.employee_id, employee_name=e.full_name, employee_code=e.employee_code,
+                department_id=e.department_id, grade_id=e.grade_id, leave_type_id=r.leave_type_id,
+                leave_type_name=type_names.get(r.leave_type_id, ""), start_date=r.start_date, end_date=r.end_date,
+                state=r.state, deducted_days=r.deducted_days,
+            ).model_dump()
+            for r, e in rows
+        ]
+    )
+
+
+@router.get("/lop")
+def lop(
+    from_date: date | None = None, to_date: date | None = None, employee_id: int | None = None, manager_id: int | None = None,
+    db: Session = Depends(get_db), _user: CurrentUser = Depends(require_role("HR_ADMIN")),
+):
+    rows = reports_service.lop_report(db, from_date=from_date, to_date=to_date, employee_id=employee_id, manager_id=manager_id)
+    return ok(
+        [
+            LopReportRowOut(
+                lop_record_id=lr.lop_record_id, request_id=lr.request_id, employee_id=e.employee_id,
+                employee_name=e.full_name, employee_code=e.employee_code, start_date=lr.start_date, end_date=lr.end_date,
+                deducted_days=lr.deducted_days, converted_at=lr.converted_at,
+            ).model_dump()
+            for lr, e in rows
+        ]
+    )
+
+
+@router.get("/balances")
+def balances(leave_year_id: int | None = None, db: Session = Depends(get_db), _user: CurrentUser = Depends(require_role("HR_ADMIN"))):
+    rows = reports_service.balances_report(db, leave_year_id)
+    return ok(
+        [
+            BalanceReportRowOut(
+                entry_id=entry.entry_id, employee_id=e.employee_id, employee_name=e.full_name, employee_code=e.employee_code,
+                leave_type_id=lt.leave_type_id, leave_type_name=lt.type_name, entry_type=entry.entry_type,
+                quantity=entry.quantity, created_at=entry.created_at,
+            ).model_dump()
+            for entry, e, lt in rows
+        ]
+    )
+
+
+@router.get("/audit-log")
+def audit_log(
+    actor_id: int | None = None, action: str | None = None, entity_type: str | None = None,
+    from_ts: datetime | None = None, to_ts: datetime | None = None,
+    db: Session = Depends(get_db), _user: CurrentUser = Depends(require_role("HR_ADMIN")),
+):
+    rows = reports_service.audit_log_report(db, actor_id=actor_id, action=action, entity_type=entity_type, from_ts=from_ts, to_ts=to_ts)
+    return ok(
+        [
+            AuditLogRowOut(
+                audit_id=log.audit_id, actor_id=log.actor_id, actor_name=actor.full_name if actor else None,
+                is_system_actor=log.is_system_actor, action=log.action, entity_type=log.entity_type,
+                entity_id=log.entity_id, prior_value=log.prior_value, new_value=log.new_value, timestamp=log.timestamp,
+            ).model_dump()
+            for log, actor in rows
+        ]
+    )

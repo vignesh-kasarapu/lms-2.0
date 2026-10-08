@@ -11,6 +11,15 @@ frontend/.vite/
 .env
 backend/.env
 frontend/.env
+backend-py/.env
 storage/
 *.log
 ui-theme/
+
+# Python (backend-py)
+backend-py/.venv/
+backend-py/__pycache__/
+backend-py/**/__pycache__/
+backend-py/*.egg-info/
+mobile/node_modules/
+mobile/.expo/

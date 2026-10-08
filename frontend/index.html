@@ -11,7 +11,7 @@
       // wrong theme — a module import in main.jsx runs one paint too late for that.
       (function () {
         try {
-          var preset = localStorage.getItem('lms-preset') || 'harbour';
+          var preset = localStorage.getItem('lms-preset') || 'linen';
           var mode = localStorage.getItem('lms-mode') || 'system';
           document.documentElement.dataset.preset = preset;
           if (mode !== 'system') document.documentElement.dataset.theme = mode;
